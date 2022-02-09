@@ -1,0 +1,18 @@
+package model
+
+import (
+	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/pkg/gorm/datatype"
+	"time"
+)
+
+type Event struct {
+	BaseModel
+	StartTime time.Time
+	EndTime   time.Time
+	ClusterID datatype.UUID
+	Cluster   Cluster `gorm:"ForeignKey:ClusterID;constraint:OnDelete:CASCADE"`
+}
+
+func (e *Event) TableName() string {
+	return "events"
+}

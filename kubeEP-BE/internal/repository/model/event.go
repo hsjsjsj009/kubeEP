@@ -9,7 +9,7 @@ type Event struct {
 	BaseModel
 	StartTime time.Time
 	EndTime   time.Time
-	ClusterID datatype.UUID
+	ClusterID gormDatatype.UUID
 	Cluster   Cluster `gorm:"ForeignKey:ClusterID;constraint:OnDelete:CASCADE"`
 }
 

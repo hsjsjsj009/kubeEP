@@ -1,4 +1,4 @@
-package datatype
+package gormDatatype
 
 import (
 	"github.com/google/uuid"

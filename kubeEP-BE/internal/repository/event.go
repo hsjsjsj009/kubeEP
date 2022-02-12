@@ -7,33 +7,30 @@ import (
 )
 
 type Event interface {
-	GetEventByID(id uuid.UUID) (*model.Event, error)
-	ListEventByClusterID(id uuid.UUID) ([]*model.Event, error)
-	InsertEvent(data *model.Event) error
+	GetEventByID(tx *gorm.DB, id uuid.UUID) (*model.Event, error)
+	ListEventByClusterID(tx *gorm.DB, id uuid.UUID) ([]*model.Event, error)
+	InsertEvent(tx *gorm.DB, data *model.Event) error
 }
 
 type event struct {
-	db *gorm.DB
 }
 
-func NewEvent(db *gorm.DB) Event {
-	return &event{
-		db: db,
-	}
+func NewEvent() Event {
+	return &event{}
 }
 
-func (e *event) GetEventByID(id uuid.UUID) (*model.Event, error) {
+func (e *event) GetEventByID(tx *gorm.DB, id uuid.UUID) (*model.Event, error) {
 	data := &model.Event{}
-	tx := e.db.Model(data).First(data, id)
+	tx = tx.Model(data).First(data, id)
 	return data, tx.Error
 }
 
-func (e *event) ListEventByClusterID(id uuid.UUID) ([]*model.Event, error) {
+func (e *event) ListEventByClusterID(tx *gorm.DB, id uuid.UUID) ([]*model.Event, error) {
 	var data []*model.Event
-	tx := e.db.Model(&model.Event{}).Where("cluster_id = ?", id).Scan(&data)
+	tx = tx.Model(&model.Event{}).Where("cluster_id = ?", id).Find(&data)
 	return data, tx.Error
 }
 
-func (e *event) InsertEvent(data *model.Event) error {
-	return e.db.Create(data).Error
+func (e *event) InsertEvent(tx *gorm.DB, data *model.Event) error {
+	return tx.Create(data).Error
 }

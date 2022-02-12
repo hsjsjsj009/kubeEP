@@ -7,9 +7,10 @@ import (
 type ScheduledHPAConfig struct {
 	BaseModel
 	Name                   string
-	Spec                   datatype.JSON
+	Spec                   gormDatatype.JSON
 	ServiceTestingEndpoint *string
-	EventID                datatype.UUID
+	Namespace              string
+	EventID                gormDatatype.UUID
 	Event                  Event `gorm:"ForeignKey:EventID;constraint:OnDelete:CASCADE"`
 }
 

@@ -1,7 +1,6 @@
-package gcp_custom
+package gcpCustomAuth
 
 import (
-	"context"
 	"errors"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -16,38 +15,18 @@ const CredentialsNameConfigKey = "credentials_name"
 
 var (
 	lock sync.Mutex
-	// defaultScopes:
-	// - cloud-platform is the base scope to authenticate to GCP.
-	// - userinfo.email is used to authenticate to GKE APIs with gserviceaccount
-	//   email instead of numeric uniqueID.
-	defaultScopes = []string{
-		"https://www.googleapis.com/auth/cloud-platform",
-		"https://www.googleapis.com/auth/userinfo.email",
-	}
 
 	credentialList = make(map[string]*google.Credentials)
 )
 
-func GetSACredentialsFromJSON(ctx context.Context, credentialsName string, credentialsJsonBytes []byte, scopes ...string) (*google.Credentials, error) {
+func RegisterGoogleCredentials(credentialsName string, credential *google.Credentials) {
 	lock.Lock()
 	defer lock.Unlock()
 
-	if credentials, ok := credentialList[credentialsName]; ok {
-		return credentials, nil
-	}
-
-	if len(scopes) == 0 {
-		scopes = defaultScopes
-	}
-	credentials, err := google.CredentialsFromJSON(ctx, credentialsJsonBytes, scopes...)
-	if err != nil {
-		return nil, err
-	}
-	credentialList[credentialsName] = credentials
-	return credentials, nil
+	credentialList[credentialsName] = credential
 }
 
-func init() {
+func RegisterK8SGCPCustomAuthProvider() {
 	if err := restclient.RegisterAuthProviderPlugin("gcp_custom", newGCPCustomAuthProvider); err != nil {
 		klog.Fatalf("Failed to register gcp_custom auth plugin: %v", err)
 	}

@@ -7,26 +7,23 @@ import (
 )
 
 type Datacenter interface {
-	GetDatacenterByID(id uuid.UUID) (*model.Datacenter, error)
-	InsertDatacenter(data *model.Datacenter) error
+	GetDatacenterByID(tx *gorm.DB, id uuid.UUID) (*model.Datacenter, error)
+	InsertDatacenter(tx *gorm.DB, data *model.Datacenter) error
 }
 
 type datacenter struct {
-	db *gorm.DB
 }
 
-func NewDatacenter(db *gorm.DB) Datacenter {
-	return &datacenter{
-		db: db,
-	}
+func NewDatacenter() Datacenter {
+	return &datacenter{}
 }
 
-func (d *datacenter) GetDatacenterByID(id uuid.UUID) (*model.Datacenter, error) {
+func (d *datacenter) GetDatacenterByID(tx *gorm.DB, id uuid.UUID) (*model.Datacenter, error) {
 	data := &model.Datacenter{}
-	tx := d.db.First(data, id)
+	tx = tx.First(data, id)
 	return data, tx.Error
 }
 
-func (d *datacenter) InsertDatacenter(data *model.Datacenter) error {
-	return d.db.Create(data).Error
+func (d *datacenter) InsertDatacenter(tx *gorm.DB, data *model.Datacenter) error {
+	return tx.Create(data).Error
 }

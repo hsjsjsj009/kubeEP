@@ -1,4 +1,4 @@
-package datatype
+package gormDatatype
 
 import (
 	"database/sql/driver"

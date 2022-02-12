@@ -6,8 +6,8 @@ import (
 
 type Cluster struct {
 	BaseModel
-	DatacenterID   datatype.UUID
-	Metadata       datatype.JSON
+	DatacenterID   gormDatatype.UUID
+	Metadata       gormDatatype.JSON
 	Name           string
 	Certificate    []byte
 	ServerEndpoint string

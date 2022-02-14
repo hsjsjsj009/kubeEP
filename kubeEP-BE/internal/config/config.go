@@ -11,6 +11,13 @@ type Config struct {
 
 type databaseConfig struct {
 	Postgres postgresConfig `yaml:"postgres"`
+	Redis    redisConfig    `yaml:"redis"`
+}
+
+type redisConfig struct {
+	Password string `yaml:"password"`
+	Host     string `yaml:"host"`
+	Port     string `yaml:"port"`
 }
 
 type postgresConfig struct {

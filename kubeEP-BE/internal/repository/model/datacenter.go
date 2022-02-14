@@ -7,10 +7,10 @@ import (
 
 type Datacenter struct {
 	BaseModel
-	Name        string
-	Credentials gormDatatype.JSON
-	Metadata    gormDatatype.JSON
-	Datacenter  constant.DatacenterType
+	Name        string                  `json:"name"`
+	Credentials gormDatatype.JSON       `json:"credentials"`
+	Metadata    gormDatatype.JSON       `json:"metadata"`
+	Datacenter  constant.DatacenterType `json:"datacenter"`
 }
 
 func (d *Datacenter) TableName() string {

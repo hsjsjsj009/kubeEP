@@ -1,7 +1,5 @@
-package errors
-
-type DatacenterError string
+package errorConstant
 
 const (
-	DatacenterMismatch DatacenterError = "datacenter mismatch"
+	DatacenterMismatch = "datacenter mismatch"
 )

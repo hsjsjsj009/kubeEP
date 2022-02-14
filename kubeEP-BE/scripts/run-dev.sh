@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
+set -e
 
-go build -o app cmd/kubeEP/main.go
-./app
+go build -o app ./cmd/kubeEP && ./app

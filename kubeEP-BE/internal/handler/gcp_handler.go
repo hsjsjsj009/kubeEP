@@ -75,8 +75,10 @@ func (g *gcpHandler) GetClustersByDatacenterID(c *fiber.Ctx) error {
 		return g.errorResponse(c, err.Error())
 	}
 	var data *model.Datacenter
+	isTemporaryDatacenter := true
 	data, err = g.datacenterUC.GetTemporaryDatacenterData(c.Context(), *reqData.DatacenterID)
 	if err != nil {
+		isTemporaryDatacenter = false
 		data, err = g.datacenterUC.GetDatacenterData(g.db, *reqData.DatacenterID)
 		if err != nil {
 			return g.errorResponse(c, err.Error())
@@ -107,5 +109,8 @@ func (g *gcpHandler) GetClustersByDatacenterID(c *fiber.Ctx) error {
 		})
 	}
 
-	return g.successResponse(c, clusterData)
+	return g.successResponse(c, gcpResponse.DatacenterClusters{
+		Clusters:              clusterData,
+		IsTemporaryDatacenter: isTemporaryDatacenter,
+	})
 }

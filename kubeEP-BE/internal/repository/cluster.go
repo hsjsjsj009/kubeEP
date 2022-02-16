@@ -46,7 +46,7 @@ func (d *cluster) ListAllRegisteredCluster(tx *gorm.DB) ([]*model.Cluster, error
 		       d.datacenter
 		from clusters c
 		join datacenters d on d.id = c.datacenter_id and d.deleted_at is null
-		where c.datacenter_id = ? and c.deleted_at is null
+		where c.deleted_at is null
 	`).Rows()
 	defer rows.Close()
 	if err != nil {

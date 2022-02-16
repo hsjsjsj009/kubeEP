@@ -10,6 +10,7 @@ import (
 
 type Cluster interface {
 	GetAllClustersInLocalByDatacenterID(tx *gorm.DB, datacenterID uuid.UUID) ([]UCEntity.ClusterData, error)
+	GetAllClustersInLocal(tx *gorm.DB) ([]UCEntity.ClusterData, error)
 }
 
 type cluster struct {
@@ -23,6 +24,24 @@ func NewCluster(validatorInst *validator.Validate, clusterRepo repository.Cluste
 
 func (c *cluster) GetAllClustersInLocalByDatacenterID(tx *gorm.DB, datacenterID uuid.UUID) ([]UCEntity.ClusterData, error) {
 	clusters, err := c.clusterRepo.ListClusterByDatacenterID(tx, datacenterID)
+	if err != nil {
+		return nil, err
+	}
+	var output []UCEntity.ClusterData
+	for _, cluster := range clusters {
+		output = append(output, UCEntity.ClusterData{
+			ID:             cluster.ID.GetUUID(),
+			Name:           cluster.Name,
+			Certificate:    cluster.Certificate,
+			ServerEndpoint: cluster.ServerEndpoint,
+			Datacenter:     cluster.Datacenter.Datacenter,
+		})
+	}
+	return output, nil
+}
+
+func (c *cluster) GetAllClustersInLocal(tx *gorm.DB) ([]UCEntity.ClusterData, error) {
+	clusters, err := c.clusterRepo.ListAllRegisteredCluster(tx)
 	if err != nil {
 		return nil, err
 	}

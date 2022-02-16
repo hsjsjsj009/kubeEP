@@ -13,4 +13,8 @@ func buildRoute(handlers *handler.Handlers, router fiber.Router) {
 		})
 		router.Get("/clusters", handlers.GcpHandler.GetClustersByDatacenterID)
 	})
+
+	router.Route("/clusters", func(router fiber.Router) {
+		router.Get("/", handlers.ClusterHandler.GetAllClusters)
+	})
 }

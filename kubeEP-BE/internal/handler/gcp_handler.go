@@ -5,8 +5,10 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant"
 	errorConstant "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant/errors"
 	gcpRequest "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/request/gcp"
+	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/response"
 	gcpResponse "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/response/gcp"
 	gcpUCEntity "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/usecase/gcp"
 	useCase "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/usecase"
@@ -67,6 +69,7 @@ func (g *gcpHandler) RegisterDatacenter(c *fiber.Ctx) error {
 
 	return g.successResponse(c, gcpResponse.DatacenterData{DatacenterID: id, IsTemporary: *reqData.IsTemporary})
 }
+
 func (g *gcpHandler) GetClustersByDatacenterID(c *fiber.Ctx) error {
 	reqData := &gcpRequest.ExistingDatacenterData{}
 	err := c.QueryParser(reqData)
@@ -106,7 +109,10 @@ func (g *gcpHandler) GetClustersByDatacenterID(c *fiber.Ctx) error {
 	var clusterData []gcpResponse.Cluster
 	for _, cluster := range clusters {
 		clusterData = append(clusterData, gcpResponse.Cluster{
-			Name:     cluster.Name,
+			Cluster: response.Cluster{
+				Name:       cluster.Name,
+				Datacenter: constant.GCP,
+			},
 			Location: cluster.Location,
 		})
 	}
@@ -198,8 +204,11 @@ func (g *gcpHandler) RegisterClusterWithDatacenter(c *fiber.Ctx) error {
 	var responses []gcpResponse.Cluster
 	for _, cluster := range selectedClusters {
 		responses = append(responses, gcpResponse.Cluster{
-			ID:       &cluster.ID,
-			Name:     cluster.Name,
+			Cluster: response.Cluster{
+				ID:         &cluster.ID,
+				Name:       cluster.Name,
+				Datacenter: constant.GCP,
+			},
 			Location: cluster.Location,
 		})
 	}

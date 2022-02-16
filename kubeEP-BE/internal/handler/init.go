@@ -6,7 +6,8 @@ import (
 )
 
 type Handlers struct {
-	GcpHandler GcpHandler
+	GcpHandler     GcpHandler
+	ClusterHandler ClusterHandler
 }
 
 func BuildHandlers(useCases *useCase.UseCases, resources *config.KubeEPResources) *Handlers {
@@ -17,6 +18,11 @@ func BuildHandlers(useCases *useCase.UseCases, resources *config.KubeEPResources
 			useCases.GcpUseCaseDC,
 			resources.DB,
 			useCases.UseCaseCluster,
+		),
+		ClusterHandler: newClusterHandler(
+			resources.ValidatorInst,
+			useCases.UseCaseCluster,
+			resources.DB,
 		),
 	}
 

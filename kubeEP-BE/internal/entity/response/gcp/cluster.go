@@ -1,11 +1,10 @@
 package gcpResponse
 
-import "github.com/google/uuid"
+import "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/response"
 
 type Cluster struct {
-	ID       *uuid.UUID `json:"id,omitempty"`
-	Name     string     `json:"name"`
-	Location string     `json:"location"`
+	response.Cluster
+	Location string `json:"location"`
 }
 
 type DatacenterClusters struct {

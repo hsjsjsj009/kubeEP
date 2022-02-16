@@ -9,7 +9,8 @@ func buildRoute(handlers *handler.Handlers, router fiber.Router) {
 	router.Route("/gcp", func(router fiber.Router) {
 		router.Route("/register", func(router fiber.Router) {
 			router.Post("/datacenter", handlers.GcpHandler.RegisterDatacenter)
+			router.Post("/clusters", handlers.GcpHandler.RegisterClusterWithDatacenter)
 		})
-		router.Post("/clusters", handlers.GcpHandler.GetClustersByDatacenterID)
+		router.Get("/clusters", handlers.GcpHandler.GetClustersByDatacenterID)
 	})
 }

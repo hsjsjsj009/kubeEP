@@ -12,5 +12,5 @@ type DatacenterData struct {
 }
 
 type ExistingDatacenterData struct {
-	DatacenterID *uuid.UUID `json:"datacenter_id" validate:"required"`
+	DatacenterID *uuid.UUID `json:"datacenter_id" query:"datacenter_id" validate:"required"`
 }

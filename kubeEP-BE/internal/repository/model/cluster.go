@@ -6,14 +6,17 @@ import (
 
 type Cluster struct {
 	BaseModel
-	DatacenterID   gormDatatype.UUID
-	Metadata       gormDatatype.JSON
-	Name           string
-	Certificate    []byte
-	ServerEndpoint string
-	Datacenter     Datacenter `gorm:"ForeignKey:DatacenterID;constraint:OnDelete:CASCADE"`
+	DatacenterID   gormDatatype.UUID `json:"datacenter_id"`
+	Metadata       gormDatatype.JSON `json:"metadata"`
+	Name           string            `json:"name"`
+	Certificate    string            `json:"certificate"`
+	ServerEndpoint string            `json:"server_endpoint"`
+	Datacenter     Datacenter        `gorm:"ForeignKey:DatacenterID;constraint:OnDelete:CASCADE" json:"-"`
 }
 
 func (c *Cluster) TableName() string {
 	return "clusters"
+}
+
+type ClusterWithDatacenterType struct {
 }

@@ -1,8 +1,11 @@
 package gcpResponse
 
+import "github.com/google/uuid"
+
 type Cluster struct {
-	Name     string `json:"name"`
-	Location string `json:"location"`
+	ID       *uuid.UUID `json:"id,omitempty"`
+	Name     string     `json:"name"`
+	Location string     `json:"location"`
 }
 
 type DatacenterClusters struct {

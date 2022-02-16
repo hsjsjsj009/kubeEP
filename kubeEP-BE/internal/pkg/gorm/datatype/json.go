@@ -49,3 +49,11 @@ func (JSON) GormDBDataType(db *gorm.DB, field *schema.Field) string {
 func (JSON) GormDataType() string {
 	return "json"
 }
+
+func (j JSON) GetRawMessage() json.RawMessage {
+	return json.RawMessage(j)
+}
+
+func (j *JSON) SetRawMessage(message json.RawMessage) {
+	*j = JSON(message)
+}

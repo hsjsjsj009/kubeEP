@@ -9,7 +9,6 @@ import (
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant"
 	errorConstant "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant/errors"
 	gcpUCEntity "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/usecase/gcp"
-	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/pkg/gorm/datatype"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/repository"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/repository/model"
 	"golang.org/x/oauth2/google"
@@ -19,12 +18,13 @@ import (
 )
 
 type Datacenter interface {
+	SaveDatacenterDetailedData(tx *gorm.DB, data *gcpUCEntity.DatacenterDetailedData) (uuid.UUID, error)
 	SaveDatacenter(tx *gorm.DB, data gcpUCEntity.DatacenterData, SACredentials *gcpUCEntity.SAKeyCredentials) (uuid.UUID, error)
 	ParseServiceAccountKey(data gcpUCEntity.DatacenterData) (*gcpUCEntity.SAKeyCredentials, error)
 	GetGoogleCredentials(ctx context.Context, data gcpUCEntity.DatacenterData) (*google.Credentials, error)
 	SaveTemporaryDatacenter(ctx context.Context, data gcpUCEntity.DatacenterData, SACredentials *gcpUCEntity.SAKeyCredentials) (uuid.UUID, error)
-	GetTemporaryDatacenterData(ctx context.Context, id uuid.UUID) (*model.Datacenter, error)
-	GetDatacenterData(tx *gorm.DB, id uuid.UUID) (*model.Datacenter, error)
+	GetTemporaryDatacenterData(ctx context.Context, id uuid.UUID) (*gcpUCEntity.DatacenterDetailedData, error)
+	GetDatacenterData(tx *gorm.DB, id uuid.UUID) (*gcpUCEntity.DatacenterDetailedData, error)
 }
 
 type datacenter struct {
@@ -62,21 +62,54 @@ func (d *datacenter) SaveTemporaryDatacenter(ctx context.Context, data gcpUCEnti
 		return uuid.UUID{}, err
 	}
 	datacenterModel := &model.Datacenter{
-		Name:        data.Name,
-		Credentials: gormDatatype.JSON(data.Credentials),
-		Metadata:    gormDatatype.JSON(metaDataByte),
-		Datacenter:  constant.GCP,
+		Name:       data.Name,
+		Datacenter: constant.GCP,
 	}
+	datacenterModel.Credentials.SetRawMessage(data.Credentials)
+	datacenterModel.Metadata.SetRawMessage(metaDataByte)
 	err = d.datacenterRepo.InsertTemporaryDatacenter(ctx, datacenterModel, time.Hour)
-	return uuid.UUID(datacenterModel.ID), err
+	return datacenterModel.ID.GetUUID(), err
 }
 
-func (d *datacenter) GetTemporaryDatacenterData(ctx context.Context, id uuid.UUID) (*model.Datacenter, error) {
-	return d.datacenterRepo.GetTemporaryDatacenterByID(ctx, id)
+func (d *datacenter) GetTemporaryDatacenterData(ctx context.Context, id uuid.UUID) (*gcpUCEntity.DatacenterDetailedData, error) {
+	data, err := d.datacenterRepo.GetTemporaryDatacenterByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &gcpUCEntity.DatacenterDetailedData{
+		ID:          data.ID.GetUUID(),
+		Name:        data.Name,
+		Credentials: data.Credentials.GetRawMessage(),
+		Metadata:    data.Metadata.GetRawMessage(),
+		Datacenter:  data.Datacenter,
+	}, nil
 }
 
-func (d *datacenter) GetDatacenterData(tx *gorm.DB, id uuid.UUID) (*model.Datacenter, error) {
-	return d.datacenterRepo.GetDatacenterByID(tx, id)
+func (d *datacenter) GetDatacenterData(tx *gorm.DB, id uuid.UUID) (*gcpUCEntity.DatacenterDetailedData, error) {
+	data, err := d.datacenterRepo.GetDatacenterByID(tx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &gcpUCEntity.DatacenterDetailedData{
+		ID:          data.ID.GetUUID(),
+		Name:        data.Name,
+		Credentials: data.Credentials.GetRawMessage(),
+		Metadata:    data.Metadata.GetRawMessage(),
+		Datacenter:  data.Datacenter,
+	}, nil
+
+}
+
+func (d *datacenter) SaveDatacenterDetailedData(tx *gorm.DB, data *gcpUCEntity.DatacenterDetailedData) (uuid.UUID, error) {
+	datacenterData := &model.Datacenter{
+		Name:       data.Name,
+		Datacenter: data.Datacenter,
+	}
+	datacenterData.ID.SetUUID(data.ID)
+	datacenterData.Credentials.SetRawMessage(data.Credentials)
+	datacenterData.Metadata.SetRawMessage(data.Metadata)
+	err := d.datacenterRepo.InsertDatacenter(tx, datacenterData)
+	return datacenterData.ID.GetUUID(), err
 }
 
 func (d *datacenter) SaveDatacenter(tx *gorm.DB, data gcpUCEntity.DatacenterData, SACredentials *gcpUCEntity.SAKeyCredentials) (uuid.UUID, error) {
@@ -89,11 +122,11 @@ func (d *datacenter) SaveDatacenter(tx *gorm.DB, data gcpUCEntity.DatacenterData
 		return uuid.UUID{}, err
 	}
 	datacenterModel := model.Datacenter{
-		Name:        data.Name,
-		Credentials: gormDatatype.JSON(data.Credentials),
-		Metadata:    gormDatatype.JSON(metaDataByte),
-		Datacenter:  constant.GCP,
+		Name:       data.Name,
+		Datacenter: constant.GCP,
 	}
+	datacenterModel.Credentials.SetRawMessage(data.Credentials)
+	datacenterModel.Metadata.SetRawMessage(metaDataByte)
 	err = d.datacenterRepo.InsertDatacenter(tx, &datacenterModel)
 	return uuid.UUID(datacenterModel.ID), err
 }

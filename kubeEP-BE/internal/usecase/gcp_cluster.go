@@ -36,7 +36,7 @@ type gcpCluster struct {
 	clusterRepo   repository.Cluster
 }
 
-func NewGCPCluster(validatorInst *validator.Validate, clusterRepo repository.Cluster) GCPCluster {
+func newGCPCluster(validatorInst *validator.Validate, clusterRepo repository.Cluster) GCPCluster {
 	return &gcpCluster{validatorInst: validatorInst, clusterRepo: clusterRepo}
 }
 

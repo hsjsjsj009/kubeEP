@@ -25,7 +25,7 @@ type cluster struct {
 	namespaceRepo repository.K8sNamespace
 }
 
-func NewCluster(validatorInst *validator.Validate, clusterRepo repository.Cluster, hpaRepo repository.K8sHPA, namespaceRepo repository.K8sNamespace) Cluster {
+func newCluster(validatorInst *validator.Validate, clusterRepo repository.Cluster, hpaRepo repository.K8sHPA, namespaceRepo repository.K8sNamespace) Cluster {
 	return &cluster{validatorInst: validatorInst, clusterRepo: clusterRepo, hpaRepo: hpaRepo, namespaceRepo: namespaceRepo}
 }
 

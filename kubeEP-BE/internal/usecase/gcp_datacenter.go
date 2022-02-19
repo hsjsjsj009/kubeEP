@@ -32,7 +32,7 @@ type gcpDatacenter struct {
 	validatorInst  *validator.Validate
 }
 
-func NewGCPDatacenter(datacenterRepo repository.Datacenter, validatorInst *validator.Validate) GCPDatacenter {
+func newGCPDatacenter(datacenterRepo repository.Datacenter, validatorInst *validator.Validate) GCPDatacenter {
 	return &gcpDatacenter{
 		datacenterRepo: datacenterRepo,
 		validatorInst:  validatorInst,

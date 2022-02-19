@@ -17,7 +17,7 @@ type datacenter struct {
 	datacenterRepo repository.Datacenter
 }
 
-func NewDatacenter(validatorInst *validator.Validate, datacenterRepo repository.Datacenter) Datacenter {
+func newDatacenter(validatorInst *validator.Validate, datacenterRepo repository.Datacenter) Datacenter {
 	return &datacenter{validatorInst: validatorInst, datacenterRepo: datacenterRepo}
 }
 

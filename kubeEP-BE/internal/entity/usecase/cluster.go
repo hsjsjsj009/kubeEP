@@ -2,7 +2,6 @@ package UCEntity
 
 import (
 	"github.com/google/uuid"
-	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant"
 )
 
 type ClusterData struct {
@@ -10,5 +9,5 @@ type ClusterData struct {
 	Name           string
 	Certificate    string
 	ServerEndpoint string
-	Datacenter     constant.DatacenterType
+	Datacenter     DatacenterDetailedData
 }

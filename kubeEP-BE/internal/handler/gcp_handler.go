@@ -7,12 +7,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant"
 	errorConstant "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant/errors"
-	gcpRequest "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/request/gcp"
+	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/request"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/response"
-	gcpResponse "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/response/gcp"
-	gcpUCEntity "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/usecase/gcp"
+	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/usecase"
 	useCase "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/usecase"
-	gcpUseCase "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/usecase/gcp"
 	"gorm.io/gorm"
 )
 
@@ -25,13 +23,13 @@ type GcpHandler interface {
 type gcpHandler struct {
 	baseHandler
 	validatorInst    *validator.Validate
-	clusterUC        gcpUseCase.Cluster
+	clusterUC        useCase.GCPCluster
 	generalClusterUC useCase.Cluster
-	datacenterUC     gcpUseCase.Datacenter
+	datacenterUC     useCase.GCPDatacenter
 	db               *gorm.DB
 }
 
-func newGCPHandler(validatorInst *validator.Validate, clusterUC gcpUseCase.Cluster, datacenterUC gcpUseCase.Datacenter, db *gorm.DB, generalClusterUC useCase.Cluster) GcpHandler {
+func newGCPHandler(validatorInst *validator.Validate, clusterUC useCase.GCPCluster, datacenterUC useCase.GCPDatacenter, db *gorm.DB, generalClusterUC useCase.Cluster) GcpHandler {
 
 	return &gcpHandler{
 		validatorInst:    validatorInst,
@@ -43,7 +41,7 @@ func newGCPHandler(validatorInst *validator.Validate, clusterUC gcpUseCase.Clust
 }
 
 func (g *gcpHandler) RegisterDatacenter(c *fiber.Ctx) error {
-	reqData := &gcpRequest.DatacenterData{}
+	reqData := &request.GCPDatacenterData{}
 	err := c.BodyParser(reqData)
 	if err != nil {
 		return g.errorResponse(c, errorConstant.InvalidRequestBody)
@@ -52,7 +50,7 @@ func (g *gcpHandler) RegisterDatacenter(c *fiber.Ctx) error {
 	if err != nil {
 		return g.errorResponse(c, err.Error())
 	}
-	datacenterData := gcpUCEntity.DatacenterData{
+	datacenterData := UCEntity.DatacenterData{
 		Credentials: *reqData.SAKeyCredentials,
 		Name:        *reqData.Name,
 	}
@@ -67,18 +65,18 @@ func (g *gcpHandler) RegisterDatacenter(c *fiber.Ctx) error {
 		id, err = g.datacenterUC.SaveDatacenter(g.db, datacenterData, SAData)
 	}
 
-	return g.successResponse(c, gcpResponse.DatacenterData{DatacenterID: id, IsTemporary: *reqData.IsTemporary})
+	return g.successResponse(c, response.GCPDatacenterData{DatacenterID: id, IsTemporary: *reqData.IsTemporary})
 }
 
 func (g *gcpHandler) GetClustersByDatacenterID(c *fiber.Ctx) error {
-	reqData := &gcpRequest.ExistingDatacenterData{}
+	reqData := &request.GCPExistingDatacenterData{}
 	err := c.QueryParser(reqData)
 	if err != nil {
 		return g.errorResponse(c, errorConstant.InvalidQueryParam)
 	}
 	err = g.validatorInst.Struct(reqData)
 	if err != nil {
-		return g.errorResponse(c, err.Error())
+		return g.errorResponse(c, errorConstant.InvalidQueryParam)
 	}
 	isTemporaryDatacenter := true
 	data, err := g.datacenterUC.GetTemporaryDatacenterData(c.Context(), *reqData.DatacenterID)
@@ -89,7 +87,7 @@ func (g *gcpHandler) GetClustersByDatacenterID(c *fiber.Ctx) error {
 			return g.errorResponse(c, err.Error())
 		}
 	}
-	datacenterData := gcpUCEntity.DatacenterData{
+	datacenterData := UCEntity.DatacenterData{
 		Credentials: data.Credentials,
 		Name:        data.Name,
 	}
@@ -106,9 +104,9 @@ func (g *gcpHandler) GetClustersByDatacenterID(c *fiber.Ctx) error {
 		return g.errorResponse(c, err.Error())
 	}
 
-	var clusterData []gcpResponse.Cluster
+	var clusterData []response.GCPCluster
 	for _, cluster := range clusters {
-		clusterData = append(clusterData, gcpResponse.Cluster{
+		clusterData = append(clusterData, response.GCPCluster{
 			Cluster: response.Cluster{
 				Name:       cluster.Name,
 				Datacenter: constant.GCP,
@@ -117,14 +115,14 @@ func (g *gcpHandler) GetClustersByDatacenterID(c *fiber.Ctx) error {
 		})
 	}
 
-	return g.successResponse(c, gcpResponse.DatacenterClusters{
+	return g.successResponse(c, response.GCPDatacenterClusters{
 		Clusters:              clusterData,
 		IsTemporaryDatacenter: isTemporaryDatacenter,
 	})
 }
 
 func (g *gcpHandler) RegisterClusterWithDatacenter(c *fiber.Ctx) error {
-	reqData := &gcpRequest.RegisterClusterData{}
+	reqData := &request.GCPRegisterClusterData{}
 	err := c.BodyParser(reqData)
 	if err != nil {
 		return g.errorResponse(c, errorConstant.InvalidRequestBody)
@@ -133,7 +131,7 @@ func (g *gcpHandler) RegisterClusterWithDatacenter(c *fiber.Ctx) error {
 	if err != nil {
 		return g.errorResponse(c, err.Error())
 	}
-	var data *gcpUCEntity.DatacenterDetailedData
+	var data *UCEntity.DatacenterDetailedData
 	if *reqData.IsDatacenterTemporary {
 		data, err = g.datacenterUC.GetTemporaryDatacenterData(c.Context(), *reqData.DatacenterID)
 	} else {
@@ -142,7 +140,7 @@ func (g *gcpHandler) RegisterClusterWithDatacenter(c *fiber.Ctx) error {
 	if err != nil {
 		return g.errorResponse(c, err.Error())
 	}
-	datacenterData := gcpUCEntity.DatacenterData{
+	datacenterData := UCEntity.DatacenterData{
 		Credentials: data.Credentials,
 		Name:        data.Name,
 	}
@@ -158,13 +156,14 @@ func (g *gcpHandler) RegisterClusterWithDatacenter(c *fiber.Ctx) error {
 	if err != nil {
 		return g.errorResponse(c, err.Error())
 	}
+	fmt.Println("test")
 
 	existingCluster, err := g.generalClusterUC.GetAllClustersInLocalByDatacenterID(g.db, *reqData.DatacenterID)
 	if err != nil {
 		return g.errorResponse(c, err.Error())
 	}
 
-	var selectedClusters []*gcpUCEntity.ClusterData
+	var selectedClusters []*UCEntity.GCPClusterData
 	for _, clusterName := range reqData.ClustersName {
 		for _, cluster := range existingCluster {
 			if cluster.Name == clusterName {
@@ -201,9 +200,9 @@ func (g *gcpHandler) RegisterClusterWithDatacenter(c *fiber.Ctx) error {
 
 	tx.Commit()
 
-	var responses []gcpResponse.Cluster
+	var responses []response.GCPCluster
 	for _, cluster := range selectedClusters {
-		responses = append(responses, gcpResponse.Cluster{
+		responses = append(responses, response.GCPCluster{
 			Cluster: response.Cluster{
 				ID:         &cluster.ID,
 				Name:       cluster.Name,

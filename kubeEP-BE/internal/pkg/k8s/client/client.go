@@ -1,19 +1,25 @@
-package client
+package k8sClient
 
 import (
+	"encoding/base64"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 )
 
 type Credentials struct {
-	Certificate        []byte
+	Certificate        string
 	Name               string
 	ServerEndpoint     string
 	AuthProviderConfig *api.AuthProviderConfig
 }
 
 func GetClient(credentials *Credentials) (*kubernetes.Clientset, error) {
+	cert, err := base64.StdEncoding.DecodeString(credentials.Certificate)
+	if err != nil {
+		return nil, err
+	}
+
 	kubernetesConfig := api.Config{
 		APIVersion: "v1",
 		Kind:       "Config",
@@ -25,7 +31,7 @@ func GetClient(credentials *Credentials) (*kubernetes.Clientset, error) {
 	name := credentials.Name
 
 	kubernetesConfig.Clusters[name] = &api.Cluster{
-		CertificateAuthorityData: credentials.Certificate,
+		CertificateAuthorityData: cert,
 		Server:                   credentials.ServerEndpoint,
 	}
 

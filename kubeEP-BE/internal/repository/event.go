@@ -15,7 +15,7 @@ type Event interface {
 type event struct {
 }
 
-func NewEvent() Event {
+func newEvent() Event {
 	return &event{}
 }
 

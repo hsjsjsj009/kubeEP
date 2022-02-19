@@ -23,6 +23,9 @@ func BuildHandlers(useCases *useCase.UseCases, resources *config.KubeEPResources
 			resources.ValidatorInst,
 			useCases.UseCaseCluster,
 			resources.DB,
+			useCases.GcpUseCaseCluster,
+			useCases.GcpUseCaseDC,
+			useCases.UseCaseDC,
 		),
 	}
 

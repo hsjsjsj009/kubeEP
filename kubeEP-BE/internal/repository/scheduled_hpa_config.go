@@ -15,7 +15,7 @@ type ScheduledHPAConfig interface {
 type scheduledHPAConfig struct {
 }
 
-func NewScheduledHPAConfig() ScheduledHPAConfig {
+func newScheduledHPAConfig() ScheduledHPAConfig {
 	return &scheduledHPAConfig{}
 }
 

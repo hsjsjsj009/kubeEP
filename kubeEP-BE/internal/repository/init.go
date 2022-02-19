@@ -11,6 +11,8 @@ type Repositories struct {
 	Datacenter         Datacenter
 	Event              Event
 	ScheduledHPAConfig ScheduledHPAConfig
+	K8sHPA             K8sHPA
+	K8sNamespace       K8sNamespace
 }
 
 func Migrate(db *gorm.DB) error {
@@ -24,9 +26,11 @@ func Migrate(db *gorm.DB) error {
 
 func BuildRepositories(resources *config.KubeEPResources) *Repositories {
 	return &Repositories{
-		Cluster:            NewCluster(),
-		Datacenter:         NewDatacenter(resources.Redis),
-		Event:              NewEvent(),
-		ScheduledHPAConfig: NewScheduledHPAConfig(),
+		Cluster:            newCluster(),
+		Datacenter:         newDatacenter(resources.Redis),
+		Event:              newEvent(),
+		ScheduledHPAConfig: newScheduledHPAConfig(),
+		K8sHPA:             newK8sHPA(),
+		K8sNamespace:       newK8sNamespace(),
 	}
 }

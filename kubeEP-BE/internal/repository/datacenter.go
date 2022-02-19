@@ -17,13 +17,14 @@ type Datacenter interface {
 	InsertDatacenter(tx *gorm.DB, data *model.Datacenter) error
 	InsertTemporaryDatacenter(ctx context.Context, data *model.Datacenter, exp time.Duration) error
 	GetTemporaryDatacenterByID(ctx context.Context, id uuid.UUID) (*model.Datacenter, error)
+	GetDatacenterByClusterID(tx *gorm.DB, clusterID uuid.UUID) (*model.Datacenter, error)
 }
 
 type datacenter struct {
 	redisClient *redis.Client
 }
 
-func NewDatacenter(redisClient *redis.Client) Datacenter {
+func newDatacenter(redisClient *redis.Client) Datacenter {
 	return &datacenter{
 		redisClient: redisClient,
 	}
@@ -69,10 +70,28 @@ func (d *datacenter) GetTemporaryDatacenterByID(ctx context.Context, id uuid.UUI
 	return data, nil
 }
 
+func (d *datacenter) GetDatacenterByClusterID(tx *gorm.DB, clusterID uuid.UUID) (*model.Datacenter, error) {
+	data := &model.Datacenter{}
+	tx = tx.Raw(`
+		SELECT 
+		       d.* 
+		from datacenters d 
+		    join clusters c on d.id = c.datacenter_id and c.deleted_at is null 
+		where c.id = ? and d.deleted_at is null
+	`, clusterID).Scan(data)
+	if err := tx.Error; err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
 func (d *datacenter) GetDatacenterByID(tx *gorm.DB, id uuid.UUID) (*model.Datacenter, error) {
 	data := &model.Datacenter{}
 	tx = tx.First(data, id)
-	return data, tx.Error
+	if err := tx.Error; err != nil {
+		return nil, err
+	}
+	return data, nil
 }
 
 func (d *datacenter) InsertDatacenter(tx *gorm.DB, data *model.Datacenter) error {

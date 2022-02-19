@@ -7,24 +7,64 @@ import (
 )
 
 type Cluster interface {
-	GetClusterByID(tx *gorm.DB, id uuid.UUID) (*model.Cluster, error)
+	GetClusterWithDatacenterByID(tx *gorm.DB, id uuid.UUID) (*model.Cluster, error)
 	ListClusterByDatacenterID(tx *gorm.DB, id uuid.UUID) ([]*model.Cluster, error)
 	InsertCluster(tx *gorm.DB, data *model.Cluster) error
 	InsertClusterBatch(tx *gorm.DB, data []*model.Cluster) error
 	ListAllRegisteredCluster(tx *gorm.DB) ([]*model.Cluster, error)
+	GetClusterByID(tx *gorm.DB, id uuid.UUID) (*model.Cluster, error)
 }
 
 type cluster struct {
 }
 
-func NewCluster() Cluster {
+func newCluster() Cluster {
 	return &cluster{}
 }
 
-func (d *cluster) GetClusterByID(tx *gorm.DB, id uuid.UUID) (*model.Cluster, error) {
+func (d cluster) GetClusterByID(tx *gorm.DB, id uuid.UUID) (*model.Cluster, error) {
 	data := &model.Cluster{}
-	tx = tx.Model(data).First(data, id)
-	return data, tx.Error
+	tx = tx.First(data, id)
+	if err := tx.Error; err != nil {
+		return nil, err
+	}
+	return data, nil
+
+}
+
+func (d *cluster) GetClusterWithDatacenterByID(tx *gorm.DB, id uuid.UUID) (*model.Cluster, error) {
+	data := &model.Cluster{}
+	row := tx.Raw(`
+		SELECT 
+		       c.id, 
+		       c.datacenter_id, 
+		       c.metadata, 
+		       c.name, 
+		       c.certificate, 
+		       c.server_endpoint,
+		       d.datacenter,
+		       d.metadata,
+		       d.credentials,
+		       d.name,
+		       d.id
+		from clusters c
+		join datacenters d on d.id = c.datacenter_id and d.deleted_at is null
+		where c.deleted_at is null and c.id = ?
+	`, id).Row()
+	err := row.Scan(
+		&data.ID,
+		&data.DatacenterID,
+		&data.Metadata,
+		&data.Name,
+		&data.Certificate,
+		&data.ServerEndpoint,
+		&data.Datacenter.Datacenter,
+		&data.Datacenter.Metadata,
+		&data.Datacenter.Credentials,
+		&data.Datacenter.Name,
+		&data.Datacenter.ID,
+	)
+	return data, err
 }
 
 func (d *cluster) ListClusterByDatacenterID(tx *gorm.DB, id uuid.UUID) ([]*model.Cluster, error) {
@@ -49,6 +89,7 @@ func (d *cluster) ListAllRegisteredCluster(tx *gorm.DB) ([]*model.Cluster, error
 		where c.deleted_at is null
 	`).Rows()
 	defer rows.Close()
+
 	if err != nil {
 		return nil, err
 	}

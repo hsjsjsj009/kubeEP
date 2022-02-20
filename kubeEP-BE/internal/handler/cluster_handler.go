@@ -84,7 +84,7 @@ func (ch *clusterHandler) GetAllHPA(c *fiber.Ctx) error {
 		return ch.errorResponse(c, errors.New(errorConstant.DatacenterTypeNotFound))
 	}
 
-	HPAs, err := ch.generalClusterUC.GetAllHPAInCluster(c.Context(), kubernetesClient)
+	HPAs, err := ch.generalClusterUC.GetAllHPAInCluster(c.Context(), kubernetesClient, *requestData.ClusterID)
 	if err != nil {
 		return ch.errorResponse(c, err.Error())
 	}

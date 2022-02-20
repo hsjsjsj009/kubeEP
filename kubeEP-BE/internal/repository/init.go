@@ -30,7 +30,7 @@ func BuildRepositories(resources *config.KubeEPResources) *Repositories {
 		Datacenter:         newDatacenter(resources.Redis),
 		Event:              newEvent(),
 		ScheduledHPAConfig: newScheduledHPAConfig(),
-		K8sHPA:             newK8sHPA(),
+		K8sHPA:             newK8sHPA(resources.Redis),
 		K8sNamespace:       newK8sNamespace(),
 	}
 }

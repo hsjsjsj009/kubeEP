@@ -13,6 +13,8 @@ type Repositories struct {
 	ScheduledHPAConfig ScheduledHPAConfig
 	K8sHPA             K8sHPA
 	K8sNamespace       K8sNamespace
+	GCPCluster         GCPCluster
+	K8SDiscovery       K8SDiscovery
 }
 
 func Migrate(db *gorm.DB) error {
@@ -32,5 +34,7 @@ func BuildRepositories(resources *config.KubeEPResources) *Repositories {
 		ScheduledHPAConfig: newScheduledHPAConfig(),
 		K8sHPA:             newK8sHPA(resources.Redis),
 		K8sNamespace:       newK8sNamespace(),
+		GCPCluster:         newGcpCluster(),
+		K8SDiscovery:       newK8sDiscovery(),
 	}
 }

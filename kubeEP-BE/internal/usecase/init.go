@@ -12,11 +12,23 @@ type UseCases struct {
 	UseCaseDC         Datacenter
 }
 
-func BuildUseCases(resources *config.KubeEPResources, repositories *repository.Repositories) *UseCases {
+func BuildUseCases(
+	resources *config.KubeEPResources,
+	repositories *repository.Repositories,
+) *UseCases {
 	return &UseCases{
-		GcpUseCaseCluster: newGCPCluster(resources.ValidatorInst, repositories.Cluster),
-		GcpUseCaseDC:      newGCPDatacenter(repositories.Datacenter, resources.ValidatorInst),
-		UseCaseCluster:    newCluster(resources.ValidatorInst, repositories.Cluster, repositories.K8sHPA, repositories.K8sNamespace),
-		UseCaseDC:         newDatacenter(resources.ValidatorInst, repositories.Datacenter),
+		GcpUseCaseCluster: newGCPCluster(
+			resources.ValidatorInst, repositories.Cluster,
+			repositories.GCPCluster, repositories.K8SDiscovery,
+		),
+		GcpUseCaseDC: newGCPDatacenter(repositories.Datacenter, resources.ValidatorInst),
+		UseCaseCluster: newCluster(
+			resources.ValidatorInst,
+			repositories.Cluster,
+			repositories.K8sHPA,
+			repositories.K8sNamespace,
+			repositories.K8SDiscovery,
+		),
+		UseCaseDC: newDatacenter(resources.ValidatorInst, repositories.Datacenter),
 	}
 }

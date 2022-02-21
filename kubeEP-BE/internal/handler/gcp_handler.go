@@ -5,11 +5,11 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant"
 	errorConstant "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant/errors"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/request"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/response"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/usecase"
+	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/repository/model"
 	useCase "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/usecase"
 	"gorm.io/gorm"
 )
@@ -29,7 +29,13 @@ type gcpHandler struct {
 	db               *gorm.DB
 }
 
-func newGCPHandler(validatorInst *validator.Validate, clusterUC useCase.GCPCluster, datacenterUC useCase.GCPDatacenter, db *gorm.DB, generalClusterUC useCase.Cluster) GcpHandler {
+func newGCPHandler(
+	validatorInst *validator.Validate,
+	clusterUC useCase.GCPCluster,
+	datacenterUC useCase.GCPDatacenter,
+	db *gorm.DB,
+	generalClusterUC useCase.Cluster,
+) GcpHandler {
 
 	return &gcpHandler{
 		validatorInst:    validatorInst,
@@ -65,7 +71,10 @@ func (g *gcpHandler) RegisterDatacenter(c *fiber.Ctx) error {
 		id, err = g.datacenterUC.SaveDatacenter(g.db, datacenterData, SAData)
 	}
 
-	return g.successResponse(c, response.GCPDatacenterData{DatacenterID: id, IsTemporary: *reqData.IsTemporary})
+	return g.successResponse(
+		c,
+		response.GCPDatacenterData{DatacenterID: id, IsTemporary: *reqData.IsTemporary},
+	)
 }
 
 func (g *gcpHandler) GetClustersByDatacenterID(c *fiber.Ctx) error {
@@ -99,26 +108,34 @@ func (g *gcpHandler) GetClustersByDatacenterID(c *fiber.Ctx) error {
 	if err != nil {
 		return g.errorResponse(c, err.Error())
 	}
-	clusters, err := g.clusterUC.GetAllClustersInGCPProject(c.Context(), googleCredentials.ProjectID, clusterClient)
+	clusters, err := g.clusterUC.GetAllClustersInGCPProject(
+		c.Context(),
+		googleCredentials.ProjectID,
+		clusterClient,
+	)
 	if err != nil {
 		return g.errorResponse(c, err.Error())
 	}
 
 	var clusterData []response.GCPCluster
 	for _, cluster := range clusters {
-		clusterData = append(clusterData, response.GCPCluster{
-			Cluster: response.Cluster{
-				Name:       cluster.Name,
-				Datacenter: constant.GCP,
+		clusterData = append(
+			clusterData, response.GCPCluster{
+				Cluster: response.Cluster{
+					Name:       cluster.Name,
+					Datacenter: model.GCP,
+				},
+				Location: cluster.Location,
 			},
-			Location: cluster.Location,
-		})
+		)
 	}
 
-	return g.successResponse(c, response.GCPDatacenterClusters{
-		Clusters:              clusterData,
-		IsTemporaryDatacenter: isTemporaryDatacenter,
-	})
+	return g.successResponse(
+		c, response.GCPDatacenterClusters{
+			Clusters:              clusterData,
+			IsTemporaryDatacenter: isTemporaryDatacenter,
+		},
+	)
 }
 
 func (g *gcpHandler) RegisterClusterWithDatacenter(c *fiber.Ctx) error {
@@ -152,13 +169,20 @@ func (g *gcpHandler) RegisterClusterWithDatacenter(c *fiber.Ctx) error {
 	if err != nil {
 		return g.errorResponse(c, err.Error())
 	}
-	clusters, err := g.clusterUC.GetAllClustersInGCPProject(c.Context(), googleCredentials.ProjectID, clusterClient)
+	clusters, err := g.clusterUC.GetAllClustersInGCPProject(
+		c.Context(),
+		googleCredentials.ProjectID,
+		clusterClient,
+	)
 	if err != nil {
 		return g.errorResponse(c, err.Error())
 	}
 	fmt.Println("test")
 
-	existingCluster, err := g.generalClusterUC.GetAllClustersInLocalByDatacenterID(g.db, *reqData.DatacenterID)
+	existingCluster, err := g.generalClusterUC.GetAllClustersInLocalByDatacenterID(
+		g.db,
+		*reqData.DatacenterID,
+	)
 	if err != nil {
 		return g.errorResponse(c, err.Error())
 	}
@@ -184,6 +208,23 @@ func (g *gcpHandler) RegisterClusterWithDatacenter(c *fiber.Ctx) error {
 		}
 	}
 
+	g.clusterUC.RegisterGoogleCredentials(datacenterData.Name, googleCredentials)
+
+	for _, cluster := range clusters {
+		kubernetesClient, err := g.clusterUC.GetKubernetesClusterClient(
+			datacenterData.Name,
+			&cluster.ClusterData,
+		)
+		if err != nil {
+			return g.errorResponse(c, err.Error())
+		}
+		latestHPAAPIVersion, err := g.generalClusterUC.GetLatestHPAAPIVersion(kubernetesClient)
+		if err != nil {
+			return g.errorResponse(c, err.Error())
+		}
+		cluster.LatestHPAAPIVersion = latestHPAAPIVersion
+	}
+
 	tx := g.db.Begin()
 
 	if *reqData.IsDatacenterTemporary {
@@ -202,14 +243,16 @@ func (g *gcpHandler) RegisterClusterWithDatacenter(c *fiber.Ctx) error {
 
 	var responses []response.GCPCluster
 	for _, cluster := range selectedClusters {
-		responses = append(responses, response.GCPCluster{
-			Cluster: response.Cluster{
-				ID:         &cluster.ID,
-				Name:       cluster.Name,
-				Datacenter: constant.GCP,
+		responses = append(
+			responses, response.GCPCluster{
+				Cluster: response.Cluster{
+					ID:         &cluster.ID,
+					Name:       cluster.Name,
+					Datacenter: model.GCP,
+				},
+				Location: cluster.Location,
 			},
-			Location: cluster.Location,
-		})
+		)
 	}
 
 	return g.successResponse(c, responses)

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant"
 	errorConstant "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant/errors"
 	UCEntity "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/usecase"
 	gcpCustomAuth "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/pkg/k8s/auth/gcp_custom"
@@ -17,7 +16,6 @@ import (
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/repository/model"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
-	containerProto "google.golang.org/genproto/googleapis/container/v1"
 	"gorm.io/gorm"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -25,57 +23,99 @@ import (
 
 type GCPCluster interface {
 	RegisterGoogleCredentials(credentialsName string, gcpCredentials *google.Credentials)
-	GetAllClustersInGCPProject(ctx context.Context, projectID string, clusterClient *container.ClusterManagerClient) ([]*UCEntity.GCPClusterData, error)
-	GetGoogleClusterClient(ctx context.Context, googleCredential *google.Credentials) (*container.ClusterManagerClient, error)
-	RegisterClusters(tx *gorm.DB, datacenterID uuid.UUID, listCluster []*UCEntity.GCPClusterData) error
-	GetKubernetesClusterClient(credentialsName string, clusterData *UCEntity.ClusterData) (*kubernetes.Clientset, error)
+	GetAllClustersInGCPProject(
+		ctx context.Context,
+		projectID string,
+		clusterClient *container.ClusterManagerClient,
+	) ([]*UCEntity.GCPClusterData, error)
+	GetGoogleClusterClient(
+		ctx context.Context,
+		googleCredential *google.Credentials,
+	) (*container.ClusterManagerClient, error)
+	RegisterClusters(
+		tx *gorm.DB,
+		datacenterID uuid.UUID,
+		listCluster []*UCEntity.GCPClusterData,
+	) error
+	GetKubernetesClusterClient(
+		credentialsName string,
+		clusterData *UCEntity.ClusterData,
+	) (*kubernetes.Clientset, error)
 }
 
 type gcpCluster struct {
-	validatorInst *validator.Validate
-	clusterRepo   repository.Cluster
+	validatorInst    *validator.Validate
+	clusterRepo      repository.Cluster
+	gcpClusterRepo   repository.GCPCluster
+	k8sDiscoveryRepo repository.K8SDiscovery
 }
 
-func newGCPCluster(validatorInst *validator.Validate, clusterRepo repository.Cluster) GCPCluster {
-	return &gcpCluster{validatorInst: validatorInst, clusterRepo: clusterRepo}
+func newGCPCluster(
+	validatorInst *validator.Validate,
+	clusterRepo repository.Cluster,
+	gcpClusterRepo repository.GCPCluster,
+	k8sDiscoveryRepo repository.K8SDiscovery,
+) GCPCluster {
+	return &gcpCluster{
+		validatorInst:    validatorInst,
+		clusterRepo:      clusterRepo,
+		gcpClusterRepo:   gcpClusterRepo,
+		k8sDiscoveryRepo: k8sDiscoveryRepo,
+	}
 }
 
-func (c *gcpCluster) RegisterGoogleCredentials(credentialsName string, gcpCredentials *google.Credentials) {
+func (c *gcpCluster) RegisterGoogleCredentials(
+	credentialsName string,
+	gcpCredentials *google.Credentials,
+) {
 	gcpCustomAuth.RegisterGoogleCredentials(credentialsName, gcpCredentials)
 }
 
-func (c *gcpCluster) GetGoogleClusterClient(ctx context.Context, googleCredential *google.Credentials) (*container.ClusterManagerClient, error) {
+func (c *gcpCluster) GetGoogleClusterClient(
+	ctx context.Context,
+	googleCredential *google.Credentials,
+) (*container.ClusterManagerClient, error) {
 	return container.NewClusterManagerClient(ctx, option.WithCredentials(googleCredential))
 }
 
-func (c *gcpCluster) GetAllClustersInGCPProject(ctx context.Context, projectID string, clusterClient *container.ClusterManagerClient) ([]*UCEntity.GCPClusterData, error) {
-	clusters, err := clusterClient.ListClusters(
-		ctx,
-		&containerProto.ListClustersRequest{
-			Parent: fmt.Sprintf("projects/%s/locations/-", projectID),
-		},
-	)
+func (c *gcpCluster) GetAllClustersInGCPProject(
+	ctx context.Context,
+	projectID string,
+	clusterClient *container.ClusterManagerClient,
+) ([]*UCEntity.GCPClusterData, error) {
+	clusters, err := c.gcpClusterRepo.GetAllCluster(ctx, clusterClient, projectID)
 	if err != nil {
 		return nil, err
 	}
 	var clusterData []*UCEntity.GCPClusterData
 	for _, cluster := range clusters.GetClusters() {
-		clusterData = append(clusterData, &UCEntity.GCPClusterData{
-			ClusterData: UCEntity.ClusterData{
-				Name:           fmt.Sprintf("gke_%s_%s_%s", projectID, cluster.GetName(), cluster.GetLocation()),
-				Certificate:    cluster.GetMasterAuth().GetClusterCaCertificate(),
-				ServerEndpoint: fmt.Sprintf("https://%s", cluster.GetEndpoint()),
-				Datacenter: UCEntity.DatacenterDetailedData{
-					Datacenter: constant.GCP,
+		clusterData = append(
+			clusterData, &UCEntity.GCPClusterData{
+				ClusterData: UCEntity.ClusterData{
+					Name: fmt.Sprintf(
+						"gke_%s_%s_%s",
+						projectID,
+						cluster.GetName(),
+						cluster.GetLocation(),
+					),
+					Certificate:    cluster.GetMasterAuth().GetClusterCaCertificate(),
+					ServerEndpoint: fmt.Sprintf("https://%s", cluster.GetEndpoint()),
+					Datacenter: UCEntity.DatacenterDetailedData{
+						Datacenter: model.GCP,
+					},
 				},
+				Location: cluster.GetLocation(),
 			},
-			Location: cluster.GetLocation(),
-		})
+		)
 	}
 	return clusterData, nil
 }
 
-func (c *gcpCluster) RegisterClusters(tx *gorm.DB, datacenterID uuid.UUID, listCluster []*UCEntity.GCPClusterData) error {
+func (c *gcpCluster) RegisterClusters(
+	tx *gorm.DB,
+	datacenterID uuid.UUID,
+	listCluster []*UCEntity.GCPClusterData,
+) error {
 	var clusters []*model.Cluster
 	for _, cluster := range listCluster {
 		metadata := UCEntity.GCPClusterMetaData{Location: cluster.Location}
@@ -84,9 +124,10 @@ func (c *gcpCluster) RegisterClusters(tx *gorm.DB, datacenterID uuid.UUID, listC
 			return err
 		}
 		clusterModel := &model.Cluster{
-			Name:           cluster.Name,
-			ServerEndpoint: cluster.ServerEndpoint,
-			Certificate:    cluster.Certificate,
+			Name:                cluster.Name,
+			ServerEndpoint:      cluster.ServerEndpoint,
+			Certificate:         cluster.Certificate,
+			LatestHPAAPIVersion: cluster.LatestHPAAPIVersion,
 		}
 		clusterModel.DatacenterID.SetUUID(datacenterID)
 		clusterModel.Metadata.SetRawMessage(metadataByte)
@@ -105,8 +146,11 @@ func (c *gcpCluster) RegisterClusters(tx *gorm.DB, datacenterID uuid.UUID, listC
 	return nil
 }
 
-func (c gcpCluster) GetKubernetesClusterClient(credentialsName string, clusterData *UCEntity.ClusterData) (*kubernetes.Clientset, error) {
-	if clusterData.Datacenter.Datacenter != constant.GCP {
+func (c gcpCluster) GetKubernetesClusterClient(
+	credentialsName string,
+	clusterData *UCEntity.ClusterData,
+) (*kubernetes.Clientset, error) {
+	if clusterData.Datacenter.Datacenter != model.GCP {
 		return nil, errors.New(errorConstant.DatacenterMismatch)
 	}
 
@@ -115,7 +159,7 @@ func (c gcpCluster) GetKubernetesClusterClient(credentialsName string, clusterDa
 		Name:           clusterData.Name,
 		ServerEndpoint: clusterData.ServerEndpoint,
 		AuthProviderConfig: &api.AuthProviderConfig{
-			Name: "gcp_custom",
+			Name: gcpCustomAuth.AuthName,
 			Config: map[string]string{
 				gcpCustomAuth.CredentialsNameConfigKey: credentialsName,
 			},

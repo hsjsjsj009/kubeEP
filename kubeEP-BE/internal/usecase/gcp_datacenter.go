@@ -6,7 +6,6 @@ import (
 	"errors"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant"
 	errorConstant "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant/errors"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/usecase"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/repository"
@@ -18,12 +17,29 @@ import (
 )
 
 type GCPDatacenter interface {
-	SaveDatacenterDetailedData(tx *gorm.DB, data *UCEntity.DatacenterDetailedData) (uuid.UUID, error)
-	SaveDatacenter(tx *gorm.DB, data UCEntity.DatacenterData, SACredentials *UCEntity.GCPSAKeyCredentials) (uuid.UUID, error)
+	SaveDatacenterDetailedData(tx *gorm.DB, data *UCEntity.DatacenterDetailedData) (
+		uuid.UUID,
+		error,
+	)
+	SaveDatacenter(
+		tx *gorm.DB,
+		data UCEntity.DatacenterData,
+		SACredentials *UCEntity.GCPSAKeyCredentials,
+	) (uuid.UUID, error)
 	ParseServiceAccountKey(data UCEntity.DatacenterData) (*UCEntity.GCPSAKeyCredentials, error)
-	GetGoogleCredentials(ctx context.Context, data UCEntity.DatacenterData) (*google.Credentials, error)
-	SaveTemporaryDatacenter(ctx context.Context, data UCEntity.DatacenterData, SACredentials *UCEntity.GCPSAKeyCredentials) (uuid.UUID, error)
-	GetTemporaryDatacenterData(ctx context.Context, id uuid.UUID) (*UCEntity.DatacenterDetailedData, error)
+	GetGoogleCredentials(ctx context.Context, data UCEntity.DatacenterData) (
+		*google.Credentials,
+		error,
+	)
+	SaveTemporaryDatacenter(
+		ctx context.Context,
+		data UCEntity.DatacenterData,
+		SACredentials *UCEntity.GCPSAKeyCredentials,
+	) (uuid.UUID, error)
+	GetTemporaryDatacenterData(ctx context.Context, id uuid.UUID) (
+		*UCEntity.DatacenterDetailedData,
+		error,
+	)
 	GetDatacenterData(tx *gorm.DB, id uuid.UUID) (*UCEntity.DatacenterDetailedData, error)
 }
 
@@ -32,14 +48,20 @@ type gcpDatacenter struct {
 	validatorInst  *validator.Validate
 }
 
-func newGCPDatacenter(datacenterRepo repository.Datacenter, validatorInst *validator.Validate) GCPDatacenter {
+func newGCPDatacenter(
+	datacenterRepo repository.Datacenter,
+	validatorInst *validator.Validate,
+) GCPDatacenter {
 	return &gcpDatacenter{
 		datacenterRepo: datacenterRepo,
 		validatorInst:  validatorInst,
 	}
 }
 
-func (d *gcpDatacenter) ParseServiceAccountKey(data UCEntity.DatacenterData) (*UCEntity.GCPSAKeyCredentials, error) {
+func (d *gcpDatacenter) ParseServiceAccountKey(data UCEntity.DatacenterData) (
+	*UCEntity.GCPSAKeyCredentials,
+	error,
+) {
 	SACredentials := &UCEntity.GCPSAKeyCredentials{}
 	err := json.Unmarshal(data.Credentials, SACredentials)
 	if err != nil {
@@ -52,7 +74,11 @@ func (d *gcpDatacenter) ParseServiceAccountKey(data UCEntity.DatacenterData) (*U
 	return SACredentials, nil
 }
 
-func (d *gcpDatacenter) SaveTemporaryDatacenter(ctx context.Context, data UCEntity.DatacenterData, SACredentials *UCEntity.GCPSAKeyCredentials) (uuid.UUID, error) {
+func (d *gcpDatacenter) SaveTemporaryDatacenter(
+	ctx context.Context,
+	data UCEntity.DatacenterData,
+	SACredentials *UCEntity.GCPSAKeyCredentials,
+) (uuid.UUID, error) {
 	metaData := &UCEntity.GCPDatacenterMetaData{
 		ProjectId: *SACredentials.ProjectId,
 		SAEmail:   *SACredentials.ClientEmail,
@@ -63,7 +89,7 @@ func (d *gcpDatacenter) SaveTemporaryDatacenter(ctx context.Context, data UCEnti
 	}
 	datacenterModel := &model.Datacenter{
 		Name:       data.Name,
-		Datacenter: constant.GCP,
+		Datacenter: model.GCP,
 	}
 	datacenterModel.Credentials.SetRawMessage(data.Credentials)
 	datacenterModel.Metadata.SetRawMessage(metaDataByte)
@@ -71,7 +97,10 @@ func (d *gcpDatacenter) SaveTemporaryDatacenter(ctx context.Context, data UCEnti
 	return datacenterModel.ID.GetUUID(), err
 }
 
-func (d *gcpDatacenter) GetTemporaryDatacenterData(ctx context.Context, id uuid.UUID) (*UCEntity.DatacenterDetailedData, error) {
+func (d *gcpDatacenter) GetTemporaryDatacenterData(
+	ctx context.Context,
+	id uuid.UUID,
+) (*UCEntity.DatacenterDetailedData, error) {
 	data, err := d.datacenterRepo.GetTemporaryDatacenterByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -85,7 +114,10 @@ func (d *gcpDatacenter) GetTemporaryDatacenterData(ctx context.Context, id uuid.
 	}, nil
 }
 
-func (d *gcpDatacenter) GetDatacenterData(tx *gorm.DB, id uuid.UUID) (*UCEntity.DatacenterDetailedData, error) {
+func (d *gcpDatacenter) GetDatacenterData(
+	tx *gorm.DB,
+	id uuid.UUID,
+) (*UCEntity.DatacenterDetailedData, error) {
 	data, err := d.datacenterRepo.GetDatacenterByID(tx, id)
 	if err != nil {
 		return nil, err
@@ -100,7 +132,10 @@ func (d *gcpDatacenter) GetDatacenterData(tx *gorm.DB, id uuid.UUID) (*UCEntity.
 
 }
 
-func (d *gcpDatacenter) SaveDatacenterDetailedData(tx *gorm.DB, data *UCEntity.DatacenterDetailedData) (uuid.UUID, error) {
+func (d *gcpDatacenter) SaveDatacenterDetailedData(
+	tx *gorm.DB,
+	data *UCEntity.DatacenterDetailedData,
+) (uuid.UUID, error) {
 	datacenterData := &model.Datacenter{
 		Name:       data.Name,
 		Datacenter: data.Datacenter,
@@ -112,7 +147,11 @@ func (d *gcpDatacenter) SaveDatacenterDetailedData(tx *gorm.DB, data *UCEntity.D
 	return datacenterData.ID.GetUUID(), err
 }
 
-func (d *gcpDatacenter) SaveDatacenter(tx *gorm.DB, data UCEntity.DatacenterData, SACredentials *UCEntity.GCPSAKeyCredentials) (uuid.UUID, error) {
+func (d *gcpDatacenter) SaveDatacenter(
+	tx *gorm.DB,
+	data UCEntity.DatacenterData,
+	SACredentials *UCEntity.GCPSAKeyCredentials,
+) (uuid.UUID, error) {
 	metaData := &UCEntity.GCPDatacenterMetaData{
 		ProjectId: *SACredentials.ProjectId,
 		SAEmail:   *SACredentials.ClientEmail,
@@ -123,7 +162,7 @@ func (d *gcpDatacenter) SaveDatacenter(tx *gorm.DB, data UCEntity.DatacenterData
 	}
 	datacenterModel := model.Datacenter{
 		Name:       data.Name,
-		Datacenter: constant.GCP,
+		Datacenter: model.GCP,
 	}
 	datacenterModel.Credentials.SetRawMessage(data.Credentials)
 	datacenterModel.Metadata.SetRawMessage(metaDataByte)
@@ -131,8 +170,15 @@ func (d *gcpDatacenter) SaveDatacenter(tx *gorm.DB, data UCEntity.DatacenterData
 	return uuid.UUID(datacenterModel.ID), err
 }
 
-func (d *gcpDatacenter) GetGoogleCredentials(ctx context.Context, data UCEntity.DatacenterData) (*google.Credentials, error) {
-	credentials, err := google.CredentialsFromJSON(ctx, data.Credentials, contactcenterinsights.CloudPlatformScope)
+func (d *gcpDatacenter) GetGoogleCredentials(
+	ctx context.Context,
+	data UCEntity.DatacenterData,
+) (*google.Credentials, error) {
+	credentials, err := google.CredentialsFromJSON(
+		ctx,
+		data.Credentials,
+		contactcenterinsights.CloudPlatformScope,
+	)
 	if err != nil {
 		return nil, err
 	}

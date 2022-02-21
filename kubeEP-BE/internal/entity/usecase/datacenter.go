@@ -3,7 +3,7 @@ package UCEntity
 import (
 	"encoding/json"
 	"github.com/google/uuid"
-	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant"
+	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/repository/model"
 )
 
 type DatacenterData struct {
@@ -16,5 +16,5 @@ type DatacenterDetailedData struct {
 	Name        string
 	Credentials json.RawMessage
 	Metadata    json.RawMessage
-	Datacenter  constant.DatacenterType
+	Datacenter  model.DatacenterProvider
 }

@@ -8,7 +8,8 @@ import (
 	"github.com/google/uuid"
 	errorConstant "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant/errors"
 	v1Autoscale "k8s.io/api/autoscaling/v1"
-	v2Autoscale "k8s.io/api/autoscaling/v2"
+	"k8s.io/api/autoscaling/v2beta1"
+	"k8s.io/api/autoscaling/v2beta2"
 	v1Core "k8s.io/api/core/v1"
 	v1Option "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -22,12 +23,18 @@ type K8sHPA interface {
 		namespace v1Core.Namespace,
 		clusterID uuid.UUID,
 	) ([]v1Autoscale.HorizontalPodAutoscaler, error)
-	GetAllV2HPA(
+	GetAllV2beta2HPA(
 		ctx context.Context,
 		client kubernetes.Interface,
 		namespace v1Core.Namespace,
 		clusterID uuid.UUID,
-	) ([]v2Autoscale.HorizontalPodAutoscaler, error)
+	) ([]v2beta2.HorizontalPodAutoscaler, error)
+	GetAllV2beta1HPA(
+		ctx context.Context,
+		client kubernetes.Interface,
+		namespace v1Core.Namespace,
+		clusterID uuid.UUID,
+	) ([]v2beta1.HorizontalPodAutoscaler, error)
 }
 
 type k8sHPA struct {
@@ -88,18 +95,18 @@ func (h *k8sHPA) GetAllV1HPA(
 	return data.Items, nil
 }
 
-func (h *k8sHPA) GetAllV2HPA(
+func (h *k8sHPA) GetAllV2beta2HPA(
 	ctx context.Context,
 	client kubernetes.Interface,
 	namespace v1Core.Namespace,
 	clusterID uuid.UUID,
-) ([]v2Autoscale.HorizontalPodAutoscaler, error) {
-	key := fmt.Sprintf("hpa_v2_list_cluster_%s", clusterID)
+) ([]v2beta2.HorizontalPodAutoscaler, error) {
+	key := fmt.Sprintf("hpa_v2_beta_2_list_cluster_%s", clusterID)
 	if redisResponse := h.redisClient.Get(
 		ctx,
 		key,
 	); redisResponse.Err() != nil {
-		var HPAList v2Autoscale.HorizontalPodAutoscalerList
+		var HPAList v2beta2.HorizontalPodAutoscalerList
 		b, err := redisResponse.Bytes()
 		if err == nil {
 			if string(b) == errorConstant.HPAListError {
@@ -111,7 +118,51 @@ func (h *k8sHPA) GetAllV2HPA(
 		}
 	}
 	data, err := client.
-		AutoscalingV2().
+		AutoscalingV2beta2().
+		HorizontalPodAutoscalers(namespace.Name).
+		List(
+			ctx,
+			v1Option.ListOptions{},
+		)
+	if err != nil {
+		_ = h.redisClient.Set(
+			ctx,
+			key,
+			errorConstant.HPAListError,
+			HPACacheTime,
+		).Err()
+		return nil, err
+	}
+	if b, err := data.Marshal(); err == nil {
+		_ = h.redisClient.Set(ctx, key, b, HPACacheTime).Err()
+	}
+	return data.Items, nil
+}
+
+func (h *k8sHPA) GetAllV2beta1HPA(
+	ctx context.Context,
+	client kubernetes.Interface,
+	namespace v1Core.Namespace,
+	clusterID uuid.UUID,
+) ([]v2beta1.HorizontalPodAutoscaler, error) {
+	key := fmt.Sprintf("hpa_v2_beta_1_list_cluster_%s", clusterID)
+	if redisResponse := h.redisClient.Get(
+		ctx,
+		key,
+	); redisResponse.Err() != nil {
+		var HPAList v2beta1.HorizontalPodAutoscalerList
+		b, err := redisResponse.Bytes()
+		if err == nil {
+			if string(b) == errorConstant.HPAListError {
+				return nil, errors.New(errorConstant.HPAListError)
+			}
+			if err = HPAList.Unmarshal(b); err == nil {
+				return HPAList.Items, nil
+			}
+		}
+	}
+	data, err := client.
+		AutoscalingV2beta1().
 		HorizontalPodAutoscalers(namespace.Name).
 		List(
 			ctx,

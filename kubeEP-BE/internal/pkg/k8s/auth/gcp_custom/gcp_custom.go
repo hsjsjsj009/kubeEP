@@ -11,7 +11,10 @@ import (
 	"sync"
 )
 
-const CredentialsNameConfigKey = "credentials_name"
+const (
+	CredentialsNameConfigKey = "credentials_name"
+	AuthName                 = "gcp_custom"
+)
 
 var (
 	lock sync.Mutex
@@ -27,7 +30,10 @@ func RegisterGoogleCredentials(credentialsName string, credential *google.Creden
 }
 
 func RegisterK8SGCPCustomAuthProvider() {
-	if err := restclient.RegisterAuthProviderPlugin("gcp_custom", newGCPCustomAuthProvider); err != nil {
+	if err := restclient.RegisterAuthProviderPlugin(
+		AuthName,
+		newGCPCustomAuthProvider,
+	); err != nil {
 		klog.Fatalf("Failed to register gcp_custom auth plugin: %v", err)
 	}
 }
@@ -37,7 +43,11 @@ type gcpCustomAuthProvider struct {
 	persister   restclient.AuthProviderConfigPersister
 }
 
-func newGCPCustomAuthProvider(_ string, gcpConfig map[string]string, persister restclient.AuthProviderConfigPersister) (restclient.AuthProvider, error) {
+func newGCPCustomAuthProvider(
+	_ string,
+	gcpConfig map[string]string,
+	persister restclient.AuthProviderConfigPersister,
+) (restclient.AuthProvider, error) {
 	lock.Lock()
 	defer lock.Unlock()
 
@@ -50,7 +60,11 @@ func newGCPCustomAuthProvider(_ string, gcpConfig map[string]string, persister r
 }
 
 func (g *gcpCustomAuthProvider) WrapTransport(rt http.RoundTripper) http.RoundTripper {
-	return &conditionalTransport{&oauth2.Transport{Source: g.tokenSource, Base: rt}, g.persister, make(map[string]string)}
+	return &conditionalTransport{
+		&oauth2.Transport{Source: g.tokenSource, Base: rt},
+		g.persister,
+		make(map[string]string),
+	}
 }
 
 func (g *gcpCustomAuthProvider) Login() error { return nil }

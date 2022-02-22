@@ -6,10 +6,11 @@ import (
 )
 
 type UseCases struct {
-	GcpUseCaseDC      GCPDatacenter
-	GcpUseCaseCluster GCPCluster
-	UseCaseCluster    Cluster
-	UseCaseDC         Datacenter
+	GcpDatacenter GCPDatacenter
+	GcpCluster    GCPCluster
+	Cluster       Cluster
+	Datacenter    Datacenter
+	Event         Event
 }
 
 func BuildUseCases(
@@ -17,18 +18,23 @@ func BuildUseCases(
 	repositories *repository.Repositories,
 ) *UseCases {
 	return &UseCases{
-		GcpUseCaseCluster: newGCPCluster(
+		GcpCluster: newGCPCluster(
 			resources.ValidatorInst, repositories.Cluster,
 			repositories.GCPCluster, repositories.K8SDiscovery,
 		),
-		GcpUseCaseDC: newGCPDatacenter(repositories.Datacenter, resources.ValidatorInst),
-		UseCaseCluster: newCluster(
+		GcpDatacenter: newGCPDatacenter(repositories.Datacenter, resources.ValidatorInst),
+		Cluster: newCluster(
 			resources.ValidatorInst,
 			repositories.Cluster,
 			repositories.K8sHPA,
 			repositories.K8sNamespace,
 			repositories.K8SDiscovery,
 		),
-		UseCaseDC: newDatacenter(resources.ValidatorInst, repositories.Datacenter),
+		Datacenter: newDatacenter(resources.ValidatorInst, repositories.Datacenter),
+		Event: newEvent(
+			resources.ValidatorInst,
+			repositories.Event,
+			repositories.ScheduledHPAConfig,
+		),
 	}
 }

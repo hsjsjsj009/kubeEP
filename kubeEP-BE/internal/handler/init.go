@@ -14,18 +14,18 @@ func BuildHandlers(useCases *useCase.UseCases, resources *config.KubeEPResources
 	return &Handlers{
 		GcpHandler: newGCPHandler(
 			resources.ValidatorInst,
-			useCases.GcpUseCaseCluster,
-			useCases.GcpUseCaseDC,
+			useCases.GcpCluster,
+			useCases.GcpDatacenter,
 			resources.DB,
-			useCases.UseCaseCluster,
+			useCases.Cluster,
 		),
 		ClusterHandler: newClusterHandler(
 			resources.ValidatorInst,
-			useCases.UseCaseCluster,
+			useCases.Cluster,
 			resources.DB,
-			useCases.GcpUseCaseCluster,
-			useCases.GcpUseCaseDC,
-			useCases.UseCaseDC,
+			useCases.GcpCluster,
+			useCases.GcpDatacenter,
+			useCases.Datacenter,
 		),
 	}
 

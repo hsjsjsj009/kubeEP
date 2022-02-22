@@ -23,6 +23,7 @@ func Migrate(db *gorm.DB) error {
 		&model.Cluster{},
 		&model.Event{},
 		&model.ScheduledHPAConfig{},
+		&model.HPAConfigStatus{},
 	)
 }
 

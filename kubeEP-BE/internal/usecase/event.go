@@ -14,17 +14,20 @@ type Event interface {
 }
 
 type event struct {
-	validatorInst   *validator.Validate
-	eventRepository repository.Event
+	validatorInst                *validator.Validate
+	eventRepository              repository.Event
+	scheduledHPAConfigRepository repository.ScheduledHPAConfig
 }
 
-func NewEvent(
+func newEvent(
 	validatorInst *validator.Validate,
 	eventRepository repository.Event,
+	scheduledHPAConfigRepository repository.ScheduledHPAConfig,
 ) Event {
 	return &event{
-		validatorInst:   validatorInst,
-		eventRepository: eventRepository,
+		validatorInst:                validatorInst,
+		eventRepository:              eventRepository,
+		scheduledHPAConfigRepository: scheduledHPAConfigRepository,
 	}
 }
 
@@ -43,13 +46,33 @@ func (e *event) RegisterEvents(tx *gorm.DB, eventData *UCEntity.Event) (uuid.UUI
 	return data.ID.GetUUID(), nil
 }
 
-//func (e *event) RegisterModifiedHPAs(
-//	tx *gorm.DB,
-//	modifiedHPAs []UCEntity.EventModifiedHPAData,
-//	eventID uuid.UUID,
-//) ([]UCEntity.EventModifiedHPAData, error) {
-//	var data []*model.ScheduledHPAConfig
-//	for _, modifiedHPA := range modifiedHPAs {
-//		data = append(data, &model.ScheduledHPAConfig{})
-//	}
-//}
+func (e *event) RegisterModifiedHPAs(
+	tx *gorm.DB,
+	modifiedHPAs []UCEntity.EventModifiedHPAData,
+	eventID uuid.UUID,
+) ([]UCEntity.EventModifiedHPAData, error) {
+	var data []*model.ScheduledHPAConfig
+	for _, modifiedHPA := range modifiedHPAs {
+		modelData := &model.ScheduledHPAConfig{
+			Name:      modifiedHPA.Name,
+			MinPods:   modifiedHPA.MinReplicas,
+			MaxPods:   modifiedHPA.MaxReplicas,
+			Namespace: modifiedHPA.Namespace,
+		}
+		modelData.ID.SetUUID(eventID)
+		data = append(
+			data, modelData,
+		)
+	}
+	err := e.scheduledHPAConfigRepository.InsertBatchScheduledHPAConfig(tx, data)
+	if err != nil {
+		return nil, err
+	}
+	var newModifiedHPAs []UCEntity.EventModifiedHPAData
+	for idx, datum := range data {
+		modifiedHPA := modifiedHPAs[idx]
+		modifiedHPA.ID = datum.ID.GetUUID()
+		newModifiedHPAs = append(newModifiedHPAs, modifiedHPA)
+	}
+	return newModifiedHPAs, nil
+}

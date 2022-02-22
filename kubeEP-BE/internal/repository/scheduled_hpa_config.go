@@ -10,6 +10,10 @@ type ScheduledHPAConfig interface {
 	GetScheduledHPAConfigByID(tx *gorm.DB, id uuid.UUID) (*model.ScheduledHPAConfig, error)
 	ListScheduledHPAConfigByEventID(tx *gorm.DB, id uuid.UUID) ([]*model.ScheduledHPAConfig, error)
 	InsertScheduledHPAConfig(tx *gorm.DB, data *model.ScheduledHPAConfig) error
+	InsertBatchScheduledHPAConfig(
+		tx *gorm.DB,
+		data []*model.ScheduledHPAConfig,
+	) error
 }
 
 type scheduledHPAConfig struct {
@@ -19,18 +23,34 @@ func newScheduledHPAConfig() ScheduledHPAConfig {
 	return &scheduledHPAConfig{}
 }
 
-func (s *scheduledHPAConfig) GetScheduledHPAConfigByID(tx *gorm.DB, id uuid.UUID) (*model.ScheduledHPAConfig, error) {
+func (s *scheduledHPAConfig) GetScheduledHPAConfigByID(
+	tx *gorm.DB,
+	id uuid.UUID,
+) (*model.ScheduledHPAConfig, error) {
 	data := &model.ScheduledHPAConfig{}
 	tx = tx.Model(data).First(data, id)
 	return data, tx.Error
 }
 
-func (s *scheduledHPAConfig) ListScheduledHPAConfigByEventID(tx *gorm.DB, id uuid.UUID) ([]*model.ScheduledHPAConfig, error) {
+func (s *scheduledHPAConfig) ListScheduledHPAConfigByEventID(
+	tx *gorm.DB,
+	id uuid.UUID,
+) ([]*model.ScheduledHPAConfig, error) {
 	var data []*model.ScheduledHPAConfig
 	tx = tx.Model(&model.ScheduledHPAConfig{}).Where("event_id = ?", id).Find(&data)
 	return data, tx.Error
 }
 
-func (s *scheduledHPAConfig) InsertScheduledHPAConfig(tx *gorm.DB, data *model.ScheduledHPAConfig) error {
+func (s *scheduledHPAConfig) InsertScheduledHPAConfig(
+	tx *gorm.DB,
+	data *model.ScheduledHPAConfig,
+) error {
+	return tx.Create(data).Error
+}
+
+func (s *scheduledHPAConfig) InsertBatchScheduledHPAConfig(
+	tx *gorm.DB,
+	data []*model.ScheduledHPAConfig,
+) error {
 	return tx.Create(data).Error
 }

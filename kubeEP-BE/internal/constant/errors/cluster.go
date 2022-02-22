@@ -5,4 +5,5 @@ const (
 	ClusterExists       = "cluster %s already exist"
 	HPAListError        = "hpa list error"
 	GetClusterListError = "get cluster list error"
+	HPAVersionUnknown   = "hpa version unknown"
 )

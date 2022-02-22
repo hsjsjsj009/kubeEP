@@ -1,7 +1,6 @@
 package response
 
 type SimpleHPA struct {
-	APIVersion      string `json:"api_version"`
 	Name            string `json:"name"`
 	Namespace       string `json:"namespace"`
 	MinReplicas     *int32 `json:"min_replicas,omitempty"`

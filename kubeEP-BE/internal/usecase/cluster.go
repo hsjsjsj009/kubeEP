@@ -2,17 +2,23 @@ package useCase
 
 import (
 	"context"
+	"errors"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant"
+	errorConstant "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant/errors"
 	UCEntity "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/usecase"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/repository"
+	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/semaphore"
 	"gorm.io/gorm"
 	v1hpa "k8s.io/api/autoscaling/v1"
 	"k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/api/autoscaling/v2beta2"
+	v1Core "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"sort"
 	"sync"
 )
 
@@ -26,6 +32,7 @@ type Cluster interface {
 		ctx context.Context,
 		client kubernetes.Interface,
 		clusterID uuid.UUID,
+		latestHPAVersion constant.HPAVersion,
 	) (output []UCEntity.SimpleHPAData, err error)
 	GetClusterAndDatacenterDataByClusterID(tx *gorm.DB, id uuid.UUID) (*UCEntity.ClusterData, error)
 	GetLatestHPAAPIVersion(
@@ -150,6 +157,7 @@ func (c *cluster) GetClusterAndDatacenterDataByClusterID(
 			Metadata:    datacenterModelData.Metadata.GetRawMessage(),
 			Datacenter:  datacenterModelData.Datacenter,
 		},
+		LatestHPAAPIVersion: data.LatestHPAAPIVersion,
 	}
 	return clusterData, nil
 }
@@ -158,40 +166,109 @@ func (c *cluster) GetAllHPAInCluster(
 	ctx context.Context,
 	client kubernetes.Interface,
 	clusterID uuid.UUID,
+	latestHPAVersion constant.HPAVersion,
 ) (output []UCEntity.SimpleHPAData, err error) {
 	namespaces, err := c.namespaceRepo.GetAllNamespace(ctx, client)
 	if err != nil {
 		return nil, err
 	}
-	var v1HPAs []v1hpa.HorizontalPodAutoscaler
-	var v2b2HPAs []v2beta2.HorizontalPodAutoscaler
-	var v2b1HPAs []v2beta1.HorizontalPodAutoscaler
-	var errV1, errV2b2, errV2b1 error
+	HPAs := map[string]interface{}{}
+	var lock sync.Mutex
+	eg, _ := errgroup.WithContext(ctx)
+	sem := semaphore.NewWeighted(4)
+	//Get data
 	for _, namespace := range namespaces {
-		var wg sync.WaitGroup
-		wg.Add(3)
-		go func() {
-			defer wg.Done()
-			v2b2HPAs, errV2b2 = c.hpaRepo.GetAllV2beta2HPA(ctx, client, namespace, clusterID)
-		}()
-		go func() {
-			defer wg.Done()
-			v2b1HPAs, errV2b1 = c.hpaRepo.GetAllV2beta1HPA(ctx, client, namespace, clusterID)
-		}()
-		wg.Wait()
-		if errV1 == nil {
-			for _, v1HPA := range v1HPAs {
+		if err := sem.Acquire(ctx, 1); err != nil {
+			return nil, err
+		}
+		loadFunc := func(ns v1Core.Namespace) func() error {
+			return func() error {
+				defer sem.Release(1)
+
+				var response interface{}
+				var err error
+
+				switch latestHPAVersion {
+				case constant.AutoscalingV1:
+					response, err = c.hpaRepo.GetAllV1HPA(ctx, client, ns, clusterID)
+				case constant.AutoscalingV2Beta1:
+					response, err = c.hpaRepo.GetAllV2beta1HPA(ctx, client, ns, clusterID)
+				case constant.AutoscalingV2Beta2:
+					response, err = c.hpaRepo.GetAllV2beta2HPA(ctx, client, ns, clusterID)
+				default:
+					return errors.New(errorConstant.HPAVersionUnknown)
+				}
+				if err != nil {
+					return err
+				}
+				lock.Lock()
+				HPAs[ns.Name] = response
+				lock.Unlock()
+
+				return nil
+			}
+		}
+		eg.Go(loadFunc(namespace))
+	}
+	if err := eg.Wait(); err != nil {
+		return nil, err
+	}
+
+	var keys []string
+
+	for k := range HPAs {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	for _, ns := range keys {
+		v := HPAs[ns]
+		switch chosenHPAs := v.(type) {
+		case []v1hpa.HorizontalPodAutoscaler:
+			for _, hpa := range chosenHPAs {
 				output = append(
 					output, UCEntity.SimpleHPAData{
-						APIVersion:      constant.AutoscalingV1,
-						Name:            v1HPA.Name,
-						Namespace:       namespace.Name,
-						MinReplicas:     v1HPA.Spec.MinReplicas,
-						MaxReplicas:     v1HPA.Spec.MaxReplicas,
-						CurrentReplicas: v1HPA.Status.CurrentReplicas,
+						Name:            hpa.Name,
+						Namespace:       ns,
+						MinReplicas:     hpa.Spec.MinReplicas,
+						MaxReplicas:     hpa.Spec.MaxReplicas,
+						CurrentReplicas: hpa.Status.CurrentReplicas,
 						ScaleTargetRef: UCEntity.HPAScaleTargetRef{
-							Name: v1HPA.Spec.ScaleTargetRef.Name,
-							Kind: v1HPA.Spec.ScaleTargetRef.Kind,
+							Name: hpa.Spec.ScaleTargetRef.Name,
+							Kind: hpa.Spec.ScaleTargetRef.Kind,
+						},
+					},
+				)
+			}
+		case []v2beta1.HorizontalPodAutoscaler:
+			for _, hpa := range chosenHPAs {
+				output = append(
+					output, UCEntity.SimpleHPAData{
+						Name:            hpa.Name,
+						Namespace:       ns,
+						MinReplicas:     hpa.Spec.MinReplicas,
+						MaxReplicas:     hpa.Spec.MaxReplicas,
+						CurrentReplicas: hpa.Status.CurrentReplicas,
+						ScaleTargetRef: UCEntity.HPAScaleTargetRef{
+							Name: hpa.Spec.ScaleTargetRef.Name,
+							Kind: hpa.Spec.ScaleTargetRef.Kind,
+						},
+					},
+				)
+			}
+		case []v2beta2.HorizontalPodAutoscaler:
+			for _, hpa := range chosenHPAs {
+				output = append(
+					output, UCEntity.SimpleHPAData{
+						Name:            hpa.Name,
+						Namespace:       ns,
+						MinReplicas:     hpa.Spec.MinReplicas,
+						MaxReplicas:     hpa.Spec.MaxReplicas,
+						CurrentReplicas: hpa.Status.CurrentReplicas,
+						ScaleTargetRef: UCEntity.HPAScaleTargetRef{
+							Name: hpa.Spec.ScaleTargetRef.Name,
+							Kind: hpa.Spec.ScaleTargetRef.Kind,
 						},
 					},
 				)

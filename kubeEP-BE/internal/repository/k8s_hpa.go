@@ -57,7 +57,7 @@ func (h *k8sHPA) GetAllV1HPA(
 	namespace v1Core.Namespace,
 	clusterID uuid.UUID,
 ) ([]v1Autoscale.HorizontalPodAutoscaler, error) {
-	key := fmt.Sprintf("hpa_v1_list_cluster_%s", clusterID)
+	key := fmt.Sprintf("hpa_v1_list_cluster_%s_ns_%s", clusterID, namespace.Name)
 	if redisResponse := h.redisClient.Get(
 		ctx,
 		key,
@@ -101,7 +101,7 @@ func (h *k8sHPA) GetAllV2beta2HPA(
 	namespace v1Core.Namespace,
 	clusterID uuid.UUID,
 ) ([]v2beta2.HorizontalPodAutoscaler, error) {
-	key := fmt.Sprintf("hpa_v2_beta_2_list_cluster_%s", clusterID)
+	key := fmt.Sprintf("hpa_v2_beta_2_list_cluster_%s_ns_%s", clusterID, namespace.Name)
 	if redisResponse := h.redisClient.Get(
 		ctx,
 		key,
@@ -145,7 +145,7 @@ func (h *k8sHPA) GetAllV2beta1HPA(
 	namespace v1Core.Namespace,
 	clusterID uuid.UUID,
 ) ([]v2beta1.HorizontalPodAutoscaler, error) {
-	key := fmt.Sprintf("hpa_v2_beta_1_list_cluster_%s", clusterID)
+	key := fmt.Sprintf("hpa_v2_beta_1_list_cluster_%s_ns_%s", clusterID, namespace.Name)
 	if redisResponse := h.redisClient.Get(
 		ctx,
 		key,

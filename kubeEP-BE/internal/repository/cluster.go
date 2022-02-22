@@ -34,7 +34,8 @@ func (d cluster) GetClusterByID(tx *gorm.DB, id uuid.UUID) (*model.Cluster, erro
 
 func (d *cluster) GetClusterWithDatacenterByID(tx *gorm.DB, id uuid.UUID) (*model.Cluster, error) {
 	data := &model.Cluster{}
-	row := tx.Raw(`
+	row := tx.Raw(
+		`
 		SELECT 
 		       c.id, 
 		       c.datacenter_id, 
@@ -42,6 +43,7 @@ func (d *cluster) GetClusterWithDatacenterByID(tx *gorm.DB, id uuid.UUID) (*mode
 		       c.name, 
 		       c.certificate, 
 		       c.server_endpoint,
+		       c.latest_hpa_api_version,
 		       d.datacenter,
 		       d.metadata,
 		       d.credentials,
@@ -50,7 +52,8 @@ func (d *cluster) GetClusterWithDatacenterByID(tx *gorm.DB, id uuid.UUID) (*mode
 		from clusters c
 		join datacenters d on d.id = c.datacenter_id and d.deleted_at is null
 		where c.deleted_at is null and c.id = ?
-	`, id).Row()
+	`, id,
+	).Row()
 	err := row.Scan(
 		&data.ID,
 		&data.DatacenterID,
@@ -58,6 +61,7 @@ func (d *cluster) GetClusterWithDatacenterByID(tx *gorm.DB, id uuid.UUID) (*mode
 		&data.Name,
 		&data.Certificate,
 		&data.ServerEndpoint,
+		&data.LatestHPAAPIVersion,
 		&data.Datacenter.Datacenter,
 		&data.Datacenter.Metadata,
 		&data.Datacenter.Credentials,
@@ -75,7 +79,8 @@ func (d *cluster) ListClusterByDatacenterID(tx *gorm.DB, id uuid.UUID) ([]*model
 
 func (d *cluster) ListAllRegisteredCluster(tx *gorm.DB) ([]*model.Cluster, error) {
 	var data []*model.Cluster
-	rows, err := tx.Raw(`
+	rows, err := tx.Raw(
+		`
 		SELECT 
 		       c.id, 
 		       c.datacenter_id, 
@@ -83,11 +88,13 @@ func (d *cluster) ListAllRegisteredCluster(tx *gorm.DB) ([]*model.Cluster, error
 		       c.name, 
 		       c.certificate, 
 		       c.server_endpoint,
+		       c.latest_hpa_api_version,
 		       d.datacenter
 		from clusters c
 		join datacenters d on d.id = c.datacenter_id and d.deleted_at is null
 		where c.deleted_at is null
-	`).Rows()
+	`,
+	).Rows()
 	defer rows.Close()
 
 	if err != nil {
@@ -102,6 +109,7 @@ func (d *cluster) ListAllRegisteredCluster(tx *gorm.DB) ([]*model.Cluster, error
 			&cluster.Name,
 			&cluster.Certificate,
 			&cluster.ServerEndpoint,
+			&cluster.LatestHPAAPIVersion,
 			&cluster.Datacenter.Datacenter,
 		)
 		if err != nil {

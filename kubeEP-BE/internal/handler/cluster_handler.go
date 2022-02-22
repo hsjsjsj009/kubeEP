@@ -113,6 +113,7 @@ func (ch *clusterHandler) GetAllHPA(c *fiber.Ctx) error {
 		c.Context(),
 		kubernetesClient,
 		*requestData.ClusterID,
+		clusterData.LatestHPAAPIVersion,
 	)
 	if err != nil {
 		return ch.errorResponse(c, err.Error())
@@ -121,7 +122,6 @@ func (ch *clusterHandler) GetAllHPA(c *fiber.Ctx) error {
 	for _, hpa := range HPAs {
 		responses = append(
 			responses, response.SimpleHPA{
-				APIVersion:      hpa.APIVersion,
 				Name:            hpa.Name,
 				Namespace:       hpa.Namespace,
 				MinReplicas:     hpa.MinReplicas,

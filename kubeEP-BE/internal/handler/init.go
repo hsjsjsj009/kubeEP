@@ -6,8 +6,9 @@ import (
 )
 
 type Handlers struct {
-	GcpHandler     GcpHandler
-	ClusterHandler ClusterHandler
+	GcpHandler     Gcp
+	ClusterHandler Cluster
+	EventHandler   Event
 }
 
 func BuildHandlers(useCases *useCase.UseCases, resources *config.KubeEPResources) *Handlers {
@@ -26,6 +27,13 @@ func BuildHandlers(useCases *useCase.UseCases, resources *config.KubeEPResources
 			useCases.GcpCluster,
 			useCases.GcpDatacenter,
 			useCases.Datacenter,
+		),
+		EventHandler: newEventHandler(
+			resources.ValidatorInst,
+			useCases.Event,
+			useCases.ScheduledHPAConfig,
+			useCases.HPAConfigStatus,
+			resources.DB,
 		),
 	}
 

@@ -14,13 +14,13 @@ import (
 	"gorm.io/gorm"
 )
 
-type GcpHandler interface {
+type Gcp interface {
 	RegisterDatacenter(c *fiber.Ctx) error
 	GetClustersByDatacenterID(c *fiber.Ctx) error
 	RegisterClusterWithDatacenter(c *fiber.Ctx) error
 }
 
-type gcpHandler struct {
+type gcp struct {
 	baseHandler
 	validatorInst    *validator.Validate
 	clusterUC        useCase.GCPCluster
@@ -35,9 +35,9 @@ func newGCPHandler(
 	datacenterUC useCase.GCPDatacenter,
 	db *gorm.DB,
 	generalClusterUC useCase.Cluster,
-) GcpHandler {
+) Gcp {
 
-	return &gcpHandler{
+	return &gcp{
 		validatorInst:    validatorInst,
 		clusterUC:        clusterUC,
 		datacenterUC:     datacenterUC,
@@ -46,7 +46,7 @@ func newGCPHandler(
 	}
 }
 
-func (g *gcpHandler) RegisterDatacenter(c *fiber.Ctx) error {
+func (g *gcp) RegisterDatacenter(c *fiber.Ctx) error {
 	reqData := &request.GCPDatacenterData{}
 	err := c.BodyParser(reqData)
 	if err != nil {
@@ -56,6 +56,9 @@ func (g *gcpHandler) RegisterDatacenter(c *fiber.Ctx) error {
 	if err != nil {
 		return g.errorResponse(c, err.Error())
 	}
+	ctx := c.Context()
+	tx := g.db.WithContext(ctx)
+
 	datacenterData := UCEntity.DatacenterData{
 		Credentials: *reqData.SAKeyCredentials,
 		Name:        *reqData.Name,
@@ -66,9 +69,9 @@ func (g *gcpHandler) RegisterDatacenter(c *fiber.Ctx) error {
 	}
 	var id uuid.UUID
 	if *reqData.IsTemporary {
-		id, err = g.datacenterUC.SaveTemporaryDatacenter(c.Context(), datacenterData, SAData)
+		id, err = g.datacenterUC.SaveTemporaryDatacenter(ctx, datacenterData, SAData)
 	} else {
-		id, err = g.datacenterUC.SaveDatacenter(g.db, datacenterData, SAData)
+		id, err = g.datacenterUC.SaveDatacenter(tx, datacenterData, SAData)
 	}
 
 	return g.successResponse(
@@ -77,7 +80,7 @@ func (g *gcpHandler) RegisterDatacenter(c *fiber.Ctx) error {
 	)
 }
 
-func (g *gcpHandler) GetClustersByDatacenterID(c *fiber.Ctx) error {
+func (g *gcp) GetClustersByDatacenterID(c *fiber.Ctx) error {
 	reqData := &request.GCPExistingDatacenterData{}
 	err := c.QueryParser(reqData)
 	if err != nil {
@@ -87,11 +90,15 @@ func (g *gcpHandler) GetClustersByDatacenterID(c *fiber.Ctx) error {
 	if err != nil {
 		return g.errorResponse(c, errorConstant.InvalidQueryParam)
 	}
+
+	ctx := c.Context()
+	tx := g.db.WithContext(ctx)
+
 	isTemporaryDatacenter := true
-	data, err := g.datacenterUC.GetTemporaryDatacenterData(c.Context(), *reqData.DatacenterID)
+	data, err := g.datacenterUC.GetTemporaryDatacenterData(ctx, *reqData.DatacenterID)
 	if err != nil {
 		isTemporaryDatacenter = false
-		data, err = g.datacenterUC.GetDatacenterData(g.db, *reqData.DatacenterID)
+		data, err = g.datacenterUC.GetDatacenterData(tx, *reqData.DatacenterID)
 		if err != nil {
 			return g.errorResponse(c, err.Error())
 		}
@@ -100,16 +107,16 @@ func (g *gcpHandler) GetClustersByDatacenterID(c *fiber.Ctx) error {
 		Credentials: data.Credentials,
 		Name:        data.Name,
 	}
-	googleCredentials, err := g.datacenterUC.GetGoogleCredentials(c.Context(), datacenterData)
+	googleCredentials, err := g.datacenterUC.GetGoogleCredentials(ctx, datacenterData)
 	if err != nil {
 		return g.errorResponse(c, err.Error())
 	}
-	clusterClient, err := g.clusterUC.GetGoogleClusterClient(c.Context(), googleCredentials)
+	clusterClient, err := g.clusterUC.GetGoogleClusterClient(ctx, googleCredentials)
 	if err != nil {
 		return g.errorResponse(c, err.Error())
 	}
 	clusters, err := g.clusterUC.GetAllClustersInGCPProject(
-		c.Context(),
+		ctx,
 		googleCredentials.ProjectID,
 		clusterClient,
 	)
@@ -138,7 +145,7 @@ func (g *gcpHandler) GetClustersByDatacenterID(c *fiber.Ctx) error {
 	)
 }
 
-func (g *gcpHandler) RegisterClusterWithDatacenter(c *fiber.Ctx) error {
+func (g *gcp) RegisterClusterWithDatacenter(c *fiber.Ctx) error {
 	reqData := &request.GCPRegisterClusterData{}
 	err := c.BodyParser(reqData)
 	if err != nil {
@@ -148,11 +155,15 @@ func (g *gcpHandler) RegisterClusterWithDatacenter(c *fiber.Ctx) error {
 	if err != nil {
 		return g.errorResponse(c, err.Error())
 	}
+
+	ctx := c.Context()
+	tx := g.db.WithContext(ctx)
+
 	var data *UCEntity.DatacenterDetailedData
 	if *reqData.IsDatacenterTemporary {
-		data, err = g.datacenterUC.GetTemporaryDatacenterData(c.Context(), *reqData.DatacenterID)
+		data, err = g.datacenterUC.GetTemporaryDatacenterData(ctx, *reqData.DatacenterID)
 	} else {
-		data, err = g.datacenterUC.GetDatacenterData(g.db, *reqData.DatacenterID)
+		data, err = g.datacenterUC.GetDatacenterData(tx, *reqData.DatacenterID)
 	}
 	if err != nil {
 		return g.errorResponse(c, err.Error())
@@ -161,26 +172,25 @@ func (g *gcpHandler) RegisterClusterWithDatacenter(c *fiber.Ctx) error {
 		Credentials: data.Credentials,
 		Name:        data.Name,
 	}
-	googleCredentials, err := g.datacenterUC.GetGoogleCredentials(c.Context(), datacenterData)
+	googleCredentials, err := g.datacenterUC.GetGoogleCredentials(ctx, datacenterData)
 	if err != nil {
 		return g.errorResponse(c, err.Error())
 	}
-	clusterClient, err := g.clusterUC.GetGoogleClusterClient(c.Context(), googleCredentials)
+	clusterClient, err := g.clusterUC.GetGoogleClusterClient(ctx, googleCredentials)
 	if err != nil {
 		return g.errorResponse(c, err.Error())
 	}
 	clusters, err := g.clusterUC.GetAllClustersInGCPProject(
-		c.Context(),
+		ctx,
 		googleCredentials.ProjectID,
 		clusterClient,
 	)
 	if err != nil {
 		return g.errorResponse(c, err.Error())
 	}
-	fmt.Println("test")
 
 	existingCluster, err := g.generalClusterUC.GetAllClustersInLocalByDatacenterID(
-		g.db,
+		tx,
 		*reqData.DatacenterID,
 	)
 	if err != nil {
@@ -225,7 +235,7 @@ func (g *gcpHandler) RegisterClusterWithDatacenter(c *fiber.Ctx) error {
 		cluster.LatestHPAAPIVersion = latestHPAAPIVersion
 	}
 
-	tx := g.db.Begin()
+	tx = tx.Begin()
 
 	if *reqData.IsDatacenterTemporary {
 		_, err = g.datacenterUC.SaveDatacenterDetailedData(tx, data)

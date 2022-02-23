@@ -7,6 +7,7 @@ import (
 
 type Event struct {
 	BaseModel
+	Name      string
 	StartTime time.Time
 	EndTime   time.Time
 	ClusterID gormDatatype.UUID

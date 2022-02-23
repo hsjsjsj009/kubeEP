@@ -6,11 +6,13 @@ import (
 )
 
 type UseCases struct {
-	GcpDatacenter GCPDatacenter
-	GcpCluster    GCPCluster
-	Cluster       Cluster
-	Datacenter    Datacenter
-	Event         Event
+	GcpDatacenter      GCPDatacenter
+	GcpCluster         GCPCluster
+	Cluster            Cluster
+	Datacenter         Datacenter
+	Event              Event
+	ScheduledHPAConfig ScheduledHPAConfig
+	HPAConfigStatus    HPAConfigStatus
 }
 
 func BuildUseCases(
@@ -36,5 +38,7 @@ func BuildUseCases(
 			repositories.Event,
 			repositories.ScheduledHPAConfig,
 		),
+		ScheduledHPAConfig: newScheduledHPAConfig(repositories.ScheduledHPAConfig),
+		HPAConfigStatus:    newHpaConfigStatus(repositories.HPAConfigStatus),
 	}
 }

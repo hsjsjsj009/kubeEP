@@ -8,7 +8,7 @@ const (
 	HPAUpdateFailed HPAUpdateStatus = iota
 	HPAUpdateSuccess
 	HPAUpdatePending
-	HPAUpdateScheduled
+	HPAConfigCreated
 )
 
 type HPAConfigStatus struct {

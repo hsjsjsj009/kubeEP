@@ -46,7 +46,7 @@ func (h *hpaConfigStatus) GetHPAConfigStatusByScheduledHPAConfigID(
 	err := tx.Table("hpa_config_status h").Select("h.*").Joins(
 		`left join scheduled_hpa_configs s on s.id = h.scheduled_hpa_config_id and 
 		s.deleted_at is null`,
-	).Scan(data).Error
+	).Where(`s.id = ?`, scheduledHPAConfigId).Scan(data).Error
 	if err != nil {
 		return nil, err
 	}

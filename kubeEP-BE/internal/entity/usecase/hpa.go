@@ -16,7 +16,7 @@ type SimpleHPAData struct {
 	ScaleTargetRef  HPAScaleTargetRef
 }
 
-type EventModifiedHPAData struct {
+type EventModifiedHPAConfigData struct {
 	ID          uuid.UUID
 	Name        string
 	Namespace   string

@@ -14,12 +14,12 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type ClusterHandler interface {
+type Cluster interface {
 	GetAllRegisteredClusters(c *fiber.Ctx) error
 	GetAllHPA(c *fiber.Ctx) error
 }
 
-type clusterHandler struct {
+type cluster struct {
 	baseHandler
 	validatorInst       *validator.Validate
 	generalClusterUC    useCase.Cluster
@@ -36,8 +36,8 @@ func newClusterHandler(
 	gcpClusterUC useCase.GCPCluster,
 	gcpDatacenterUC useCase.GCPDatacenter,
 	generalDatacenterUC useCase.Datacenter,
-) ClusterHandler {
-	return &clusterHandler{
+) Cluster {
+	return &cluster{
 		validatorInst:       validatorInst,
 		generalClusterUC:    generalClusterUC,
 		db:                  db,
@@ -47,8 +47,12 @@ func newClusterHandler(
 	}
 }
 
-func (ch *clusterHandler) GetAllRegisteredClusters(c *fiber.Ctx) error {
-	existingClusters, err := ch.generalClusterUC.GetAllClustersInLocal(ch.db)
+func (ch *cluster) GetAllRegisteredClusters(c *fiber.Ctx) error {
+
+	ctx := c.Context()
+	tx := ch.db.WithContext(ctx)
+
+	existingClusters, err := ch.generalClusterUC.GetAllClustersInLocal(tx)
 	if err != nil {
 		return ch.errorResponse(c, err.Error())
 	}
@@ -65,7 +69,7 @@ func (ch *clusterHandler) GetAllRegisteredClusters(c *fiber.Ctx) error {
 	return ch.successResponse(c, responses)
 }
 
-func (ch *clusterHandler) GetAllHPA(c *fiber.Ctx) error {
+func (ch *cluster) GetAllHPA(c *fiber.Ctx) error {
 	requestData := &request.ExistingClusterData{}
 	err := c.QueryParser(requestData)
 	if err != nil {
@@ -75,8 +79,13 @@ func (ch *clusterHandler) GetAllHPA(c *fiber.Ctx) error {
 	if err != nil {
 		return ch.errorResponse(c, errors.New(errorConstant.InvalidQueryParam))
 	}
+
+	ctx := c.Context()
+
+	tx := ch.db.WithContext(ctx)
+
 	clusterData, err := ch.generalClusterUC.GetClusterAndDatacenterDataByClusterID(
-		ch.db,
+		tx,
 		*requestData.ClusterID,
 	)
 	if err != nil {
@@ -110,7 +119,7 @@ func (ch *clusterHandler) GetAllHPA(c *fiber.Ctx) error {
 	}
 
 	HPAs, err := ch.generalClusterUC.GetAllHPAInCluster(
-		c.Context(),
+		ctx,
 		kubernetesClient,
 		*requestData.ClusterID,
 		clusterData.LatestHPAAPIVersion,

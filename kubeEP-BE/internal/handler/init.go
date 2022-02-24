@@ -12,6 +12,11 @@ type Handlers struct {
 }
 
 func BuildHandlers(useCases *useCase.UseCases, resources *config.KubeEPResources) *Handlers {
+	kubernetesBaseHandler := kubernetesBaseHandler{
+		generalClusterUC: useCases.Cluster,
+		gcpClusterUC:     useCases.GcpCluster,
+		gcpDatacenterUC:  useCases.GcpDatacenter,
+	}
 	return &Handlers{
 		GcpHandler: newGCPHandler(
 			resources.ValidatorInst,
@@ -22,11 +27,9 @@ func BuildHandlers(useCases *useCase.UseCases, resources *config.KubeEPResources
 		),
 		ClusterHandler: newClusterHandler(
 			resources.ValidatorInst,
-			useCases.Cluster,
 			resources.DB,
-			useCases.GcpCluster,
-			useCases.GcpDatacenter,
 			useCases.Datacenter,
+			kubernetesBaseHandler,
 		),
 		EventHandler: newEventHandler(
 			resources.ValidatorInst,
@@ -34,6 +37,7 @@ func BuildHandlers(useCases *useCase.UseCases, resources *config.KubeEPResources
 			useCases.ScheduledHPAConfig,
 			useCases.HPAConfigStatus,
 			resources.DB,
+			kubernetesBaseHandler,
 		),
 	}
 

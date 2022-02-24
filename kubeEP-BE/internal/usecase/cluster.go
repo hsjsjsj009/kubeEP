@@ -18,7 +18,6 @@ import (
 	v1Core "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"sort"
 	"sync"
 )
 
@@ -44,11 +43,13 @@ type Cluster interface {
 }
 
 type cluster struct {
-	validatorInst *validator.Validate
-	clusterRepo   repository.Cluster
-	hpaRepo       repository.K8sHPA
-	namespaceRepo repository.K8sNamespace
-	discoveryRepo repository.K8SDiscovery
+	validatorInst   *validator.Validate
+	clusterRepo     repository.Cluster
+	hpaRepo         repository.K8sHPA
+	namespaceRepo   repository.K8sNamespace
+	discoveryRepo   repository.K8SDiscovery
+	gcpDatacenterUC GCPDatacenter
+	gcpClusterUC    GCPCluster
 }
 
 func newCluster(
@@ -175,8 +176,8 @@ func (c *cluster) GetAllHPAInCluster(
 	HPAs := map[string]interface{}{}
 	var lock sync.Mutex
 	eg, _ := errgroup.WithContext(ctx)
-	sem := semaphore.NewWeighted(4)
-	//Get data
+	sem := semaphore.NewWeighted(5)
+
 	for _, namespace := range namespaces {
 		if err := sem.Acquire(ctx, 1); err != nil {
 			return nil, err
@@ -214,23 +215,15 @@ func (c *cluster) GetAllHPAInCluster(
 		return nil, err
 	}
 
-	var keys []string
-
-	for k := range HPAs {
-		keys = append(keys, k)
-	}
-
-	sort.Strings(keys)
-
-	for _, ns := range keys {
-		v := HPAs[ns]
+	for _, ns := range namespaces {
+		v := HPAs[ns.Name]
 		switch chosenHPAs := v.(type) {
 		case []v1hpa.HorizontalPodAutoscaler:
 			for _, hpa := range chosenHPAs {
 				output = append(
 					output, UCEntity.SimpleHPAData{
 						Name:            hpa.Name,
-						Namespace:       ns,
+						Namespace:       ns.Name,
 						MinReplicas:     hpa.Spec.MinReplicas,
 						MaxReplicas:     hpa.Spec.MaxReplicas,
 						CurrentReplicas: hpa.Status.CurrentReplicas,
@@ -246,7 +239,7 @@ func (c *cluster) GetAllHPAInCluster(
 				output = append(
 					output, UCEntity.SimpleHPAData{
 						Name:            hpa.Name,
-						Namespace:       ns,
+						Namespace:       ns.Name,
 						MinReplicas:     hpa.Spec.MinReplicas,
 						MaxReplicas:     hpa.Spec.MaxReplicas,
 						CurrentReplicas: hpa.Status.CurrentReplicas,
@@ -262,7 +255,7 @@ func (c *cluster) GetAllHPAInCluster(
 				output = append(
 					output, UCEntity.SimpleHPAData{
 						Name:            hpa.Name,
-						Namespace:       ns,
+						Namespace:       ns.Name,
 						MinReplicas:     hpa.Spec.MinReplicas,
 						MaxReplicas:     hpa.Spec.MaxReplicas,
 						CurrentReplicas: hpa.Status.CurrentReplicas,

@@ -1,17 +1,14 @@
 package handler
 
 import (
-	"errors"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	errorConstant "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant/errors"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/request"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/response"
-	UCEntity "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/usecase"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/repository/model"
 	useCase "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/usecase"
 	"gorm.io/gorm"
-	"k8s.io/client-go/kubernetes"
 )
 
 type Cluster interface {
@@ -20,30 +17,23 @@ type Cluster interface {
 }
 
 type cluster struct {
-	baseHandler
+	kubernetesBaseHandler
 	validatorInst       *validator.Validate
-	generalClusterUC    useCase.Cluster
-	gcpClusterUC        useCase.GCPCluster
-	gcpDatacenterUC     useCase.GCPDatacenter
 	generalDatacenterUC useCase.Datacenter
 	db                  *gorm.DB
 }
 
 func newClusterHandler(
 	validatorInst *validator.Validate,
-	generalClusterUC useCase.Cluster,
 	db *gorm.DB,
-	gcpClusterUC useCase.GCPCluster,
-	gcpDatacenterUC useCase.GCPDatacenter,
 	generalDatacenterUC useCase.Datacenter,
+	kubeHandler kubernetesBaseHandler,
 ) Cluster {
 	return &cluster{
-		validatorInst:       validatorInst,
-		generalClusterUC:    generalClusterUC,
-		db:                  db,
-		gcpClusterUC:        gcpClusterUC,
-		gcpDatacenterUC:     gcpDatacenterUC,
-		generalDatacenterUC: generalDatacenterUC,
+		kubernetesBaseHandler: kubeHandler,
+		validatorInst:         validatorInst,
+		db:                    db,
+		generalDatacenterUC:   generalDatacenterUC,
 	}
 }
 
@@ -56,7 +46,7 @@ func (ch *cluster) GetAllRegisteredClusters(c *fiber.Ctx) error {
 	if err != nil {
 		return ch.errorResponse(c, err.Error())
 	}
-	var responses []response.Cluster
+	responses := make([]response.Cluster, 0)
 	for _, cluster := range existingClusters {
 		responses = append(
 			responses, response.Cluster{
@@ -73,61 +63,33 @@ func (ch *cluster) GetAllHPA(c *fiber.Ctx) error {
 	requestData := &request.ExistingClusterData{}
 	err := c.QueryParser(requestData)
 	if err != nil {
-		return ch.errorResponse(c, errors.New(errorConstant.InvalidQueryParam))
+		return ch.errorResponse(c, errorConstant.InvalidQueryParam)
 	}
 	err = ch.validatorInst.Struct(requestData)
 	if err != nil {
-		return ch.errorResponse(c, errors.New(errorConstant.InvalidQueryParam))
+		return ch.errorResponse(c, errorConstant.InvalidQueryParam)
 	}
 
 	ctx := c.Context()
 
 	tx := ch.db.WithContext(ctx)
 
-	clusterData, err := ch.generalClusterUC.GetClusterAndDatacenterDataByClusterID(
+	kubernetesClient, latestHPAAPIVersion, err := ch.getClusterKubernetesClient(
+		ctx,
 		tx,
 		*requestData.ClusterID,
 	)
-	if err != nil {
-		return ch.errorResponse(c, err.Error())
-	}
-	var kubernetesClient kubernetes.Interface
-	switch clusterData.Datacenter.Datacenter {
-	case model.GCP:
-		datacenterName := clusterData.Datacenter.Name
-		datacenterData := UCEntity.DatacenterData{
-			Credentials: clusterData.Datacenter.Credentials,
-			Name:        datacenterName,
-		}
-		googleCredential, err := ch.gcpDatacenterUC.GetGoogleCredentials(
-			c.Context(),
-			datacenterData,
-		)
-		if err != nil {
-			return ch.errorResponse(c, err.Error())
-		}
-		ch.gcpClusterUC.RegisterGoogleCredentials(datacenterName, googleCredential)
-		kubernetesClient, err = ch.gcpClusterUC.GetKubernetesClusterClient(
-			datacenterName,
-			clusterData,
-		)
-		if err != nil {
-			return ch.errorResponse(c, err.Error())
-		}
-	default:
-		return ch.errorResponse(c, errors.New(errorConstant.DatacenterTypeNotFound))
-	}
 
 	HPAs, err := ch.generalClusterUC.GetAllHPAInCluster(
 		ctx,
 		kubernetesClient,
 		*requestData.ClusterID,
-		clusterData.LatestHPAAPIVersion,
+		latestHPAAPIVersion,
 	)
 	if err != nil {
 		return ch.errorResponse(c, err.Error())
 	}
-	var responses []response.SimpleHPA
+	responses := make([]response.SimpleHPA, 0)
 	for _, hpa := range HPAs {
 		responses = append(
 			responses, response.SimpleHPA{

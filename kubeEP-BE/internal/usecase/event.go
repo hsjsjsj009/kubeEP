@@ -11,6 +11,8 @@ import (
 
 type Event interface {
 	RegisterEvents(tx *gorm.DB, eventData *UCEntity.Event) (uuid.UUID, error)
+	GetEventByName(tx *gorm.DB, eventName string) (*UCEntity.Event, error)
+	ListEventByClusterID(tx *gorm.DB, clusterID uuid.UUID) ([]UCEntity.Event, error)
 }
 
 type event struct {
@@ -45,4 +47,36 @@ func (e *event) RegisterEvents(tx *gorm.DB, eventData *UCEntity.Event) (uuid.UUI
 		return uuid.UUID{}, err
 	}
 	return data.ID.GetUUID(), nil
+}
+
+func (e *event) GetEventByName(tx *gorm.DB, eventName string) (*UCEntity.Event, error) {
+	data, err := e.eventRepository.GetEventByName(tx, eventName)
+	if err != nil {
+		return nil, err
+	}
+	return &UCEntity.Event{
+		ID:        data.ID.GetUUID(),
+		Name:      data.Name,
+		StartTime: data.StartTime,
+		EndTime:   data.EndTime,
+	}, nil
+}
+
+func (e *event) ListEventByClusterID(tx *gorm.DB, clusterID uuid.UUID) ([]UCEntity.Event, error) {
+	events, err := e.eventRepository.ListEventByClusterID(tx, clusterID)
+	if err != nil {
+		return nil, err
+	}
+	var output []UCEntity.Event
+	for _, event := range events {
+		output = append(
+			output, UCEntity.Event{
+				ID:        event.ID.GetUUID(),
+				Name:      event.Name,
+				StartTime: event.StartTime,
+				EndTime:   event.EndTime,
+			},
+		)
+	}
+	return output, nil
 }

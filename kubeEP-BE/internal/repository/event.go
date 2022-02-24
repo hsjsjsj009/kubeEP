@@ -8,6 +8,7 @@ import (
 
 type Event interface {
 	GetEventByID(tx *gorm.DB, id uuid.UUID) (*model.Event, error)
+	GetEventByName(tx *gorm.DB, name string) (*model.Event, error)
 	ListEventByClusterID(tx *gorm.DB, id uuid.UUID) ([]*model.Event, error)
 	InsertEvent(tx *gorm.DB, data *model.Event) error
 }
@@ -22,6 +23,12 @@ func newEvent() Event {
 func (e *event) GetEventByID(tx *gorm.DB, id uuid.UUID) (*model.Event, error) {
 	data := &model.Event{}
 	tx = tx.Model(data).First(data, id)
+	return data, tx.Error
+}
+
+func (e *event) GetEventByName(tx *gorm.DB, name string) (*model.Event, error) {
+	data := &model.Event{}
+	tx = tx.Model(data).Where("name = ?", name).First(data)
 	return data, tx.Error
 }
 

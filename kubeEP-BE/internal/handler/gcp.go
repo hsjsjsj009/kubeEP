@@ -124,7 +124,7 @@ func (g *gcp) GetClustersByDatacenterID(c *fiber.Ctx) error {
 		return g.errorResponse(c, err.Error())
 	}
 
-	var clusterData []response.GCPCluster
+	clusterData := make([]response.GCPCluster, 0)
 	for _, cluster := range clusters {
 		clusterData = append(
 			clusterData, response.GCPCluster{
@@ -251,7 +251,7 @@ func (g *gcp) RegisterClusterWithDatacenter(c *fiber.Ctx) error {
 
 	tx.Commit()
 
-	var responses []response.GCPCluster
+	responses := make([]response.GCPCluster, 0)
 	for _, cluster := range selectedClusters {
 		responses = append(
 			responses, response.GCPCluster{

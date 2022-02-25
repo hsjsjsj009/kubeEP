@@ -54,6 +54,9 @@ func (d *cluster) GetClusterWithDatacenterByID(tx *gorm.DB, id uuid.UUID) (*mode
 		where c.deleted_at is null and c.id = ?
 	`, id,
 	).Row()
+	if err := row.Err(); err != nil {
+		return nil, err
+	}
 	err := row.Scan(
 		&data.ID,
 		&data.DatacenterID,

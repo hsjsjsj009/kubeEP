@@ -79,6 +79,9 @@ func (ch *cluster) GetAllHPA(c *fiber.Ctx) error {
 		tx,
 		*requestData.ClusterID,
 	)
+	if err != nil {
+		return ch.errorResponse(c, err.Error())
+	}
 
 	HPAs, err := ch.generalClusterUC.GetAllHPAInCluster(
 		ctx,

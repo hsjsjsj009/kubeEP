@@ -10,7 +10,6 @@ import (
 	UCEntity "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/usecase"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/repository"
 	"golang.org/x/sync/errgroup"
-	"golang.org/x/sync/semaphore"
 	"gorm.io/gorm"
 	v1hpa "k8s.io/api/autoscaling/v1"
 	"k8s.io/api/autoscaling/v2beta1"
@@ -176,15 +175,10 @@ func (c *cluster) GetAllHPAInCluster(
 	HPAs := map[string]interface{}{}
 	var lock sync.Mutex
 	eg, _ := errgroup.WithContext(ctx)
-	sem := semaphore.NewWeighted(5)
 
 	for _, namespace := range namespaces {
-		if err := sem.Acquire(ctx, 1); err != nil {
-			return nil, err
-		}
 		loadFunc := func(ns v1Core.Namespace) func() error {
 			return func() error {
-				defer sem.Release(1)
 
 				var response interface{}
 				var err error

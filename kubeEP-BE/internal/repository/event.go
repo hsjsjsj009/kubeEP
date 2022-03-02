@@ -11,6 +11,7 @@ type Event interface {
 	GetEventByName(tx *gorm.DB, name string) (*model.Event, error)
 	ListEventByClusterID(tx *gorm.DB, id uuid.UUID) ([]*model.Event, error)
 	InsertEvent(tx *gorm.DB, data *model.Event) error
+	SaveEvent(tx *gorm.DB, data *model.Event) error
 }
 
 type event struct {
@@ -40,4 +41,8 @@ func (e *event) ListEventByClusterID(tx *gorm.DB, id uuid.UUID) ([]*model.Event,
 
 func (e *event) InsertEvent(tx *gorm.DB, data *model.Event) error {
 	return tx.Create(data).Error
+}
+
+func (e *event) SaveEvent(tx *gorm.DB, data *model.Event) error {
+	return tx.Save(data).Error
 }

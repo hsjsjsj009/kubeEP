@@ -14,6 +14,7 @@ type ScheduledHPAConfig interface {
 		modifiedHPAs []UCEntity.EventModifiedHPAConfigData,
 		eventID uuid.UUID,
 	) ([]uuid.UUID, error)
+	DeleteEventModifiedHPAConfigs(tx *gorm.DB, eventID uuid.UUID) error
 }
 
 type scheduledHPAConfig struct {
@@ -51,4 +52,8 @@ func (s *scheduledHPAConfig) RegisterModifiedHPAConfigs(
 		uuids = append(uuids, datum.ID.GetUUID())
 	}
 	return uuids, nil
+}
+
+func (s *scheduledHPAConfig) DeleteEventModifiedHPAConfigs(tx *gorm.DB, eventID uuid.UUID) error {
+	return s.scheduledHPAConfigRepo.DeletePermanentAllHPAConfigByEventID(tx, eventID)
 }

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type EventRequest struct {
+type EventDataRequest struct {
 	Name               *string                      `json:"name" validate:"required"`
 	StartTime          *time.Time                   `json:"start_time" validate:"required"`
 	EndTime            *time.Time                   `json:"end_time" validate:"required,gtefield=StartTime"`

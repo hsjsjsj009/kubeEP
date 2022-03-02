@@ -38,6 +38,7 @@ func buildRoute(handlers *handler.Handlers, router fiber.Router) {
 	router.Route(
 		"/event", func(router fiber.Router) {
 			router.Post("/register", handlers.EventHandler.RegisterEvents)
+			router.Put("/update", handlers.EventHandler.UpdateEvent)
 			router.Get("/list", handlers.EventHandler.ListEventByCluster)
 		},
 	)

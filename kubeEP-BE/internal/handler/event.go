@@ -15,6 +15,7 @@ import (
 type Event interface {
 	RegisterEvents(c *fiber.Ctx) error
 	ListEventByCluster(c *fiber.Ctx) error
+	UpdateEvent(c *fiber.Ctx) error
 }
 
 type event struct {
@@ -45,7 +46,7 @@ func newEventHandler(
 }
 
 func (e *event) RegisterEvents(c *fiber.Ctx) error {
-	reqData := &request.EventRequest{}
+	reqData := &request.EventDataRequest{}
 
 	err := c.BodyParser(reqData)
 	if err != nil {
@@ -172,4 +173,65 @@ func (e *event) ListEventByCluster(c *fiber.Ctx) error {
 
 	return e.successResponse(c, responseData)
 
+}
+
+func (e *event) UpdateEvent(c *fiber.Ctx) error {
+	req := &request.EventDataRequest{}
+	if err := c.BodyParser(req); err != nil {
+		return e.errorResponse(c, err.Error())
+	}
+
+	if err := e.validatorInst.Struct(req); err != nil {
+		return e.errorResponse(c, errorConstant.InvalidRequestBody)
+	}
+
+	ctx := c.Context()
+	db := e.db.WithContext(ctx)
+	tx := db.Begin()
+
+	eventData, err := e.eventUC.GetEventByName(db, *req.Name)
+	if err != nil {
+		return e.errorResponse(c, err.Error())
+	}
+
+	eventData.Cluster.ID = *req.ClusterID
+
+	if err := e.eventUC.UpdateEvent(tx, eventData); err != nil {
+		return e.errorResponse(c, err.Error())
+	}
+
+	if err := e.scheduledHPAConfigUC.DeleteEventModifiedHPAConfigs(tx, eventData.ID); err != nil {
+		return e.errorResponse(c, err.Error())
+	}
+
+	var newModifiedHPAConfigs []UCEntity.EventModifiedHPAConfigData
+	for _, hpaConfig := range req.ModifiedHPAConfigs {
+		newModifiedHPAConfigs = append(
+			newModifiedHPAConfigs, UCEntity.EventModifiedHPAConfigData{
+				Name:        *hpaConfig.Name,
+				Namespace:   *hpaConfig.Namespace,
+				MinReplicas: hpaConfig.MinReplicas,
+				MaxReplicas: *hpaConfig.MaxReplicas,
+			},
+		)
+	}
+
+	newHPAConfigIDs, err := e.scheduledHPAConfigUC.RegisterModifiedHPAConfigs(
+		tx,
+		newModifiedHPAConfigs,
+		eventData.ID,
+	)
+	if err != nil {
+		return e.errorResponse(c, err.Error())
+	}
+
+	_, err = e.hpaConfigStatusUC.CreateHPAConfigStatusForScheduledConfigIDs(tx, newHPAConfigIDs)
+	if err != nil {
+		return e.errorResponse(c, err.Error())
+	}
+
+	tx.Commit()
+
+	res := &response.EventCreationResponse{EventID: eventData.ID}
+	return e.successResponse(c, res)
 }

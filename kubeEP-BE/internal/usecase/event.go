@@ -14,6 +14,7 @@ type Event interface {
 	GetEventByName(tx *gorm.DB, eventName string) (*UCEntity.Event, error)
 	ListEventByClusterID(tx *gorm.DB, clusterID uuid.UUID) ([]UCEntity.Event, error)
 	UpdateEvent(tx *gorm.DB, eventData *UCEntity.Event) error
+	GetEventByID(tx *gorm.DB, eventID uuid.UUID) (*UCEntity.Event, error)
 }
 
 type event struct {
@@ -59,6 +60,23 @@ func (e *event) GetEventByName(tx *gorm.DB, eventName string) (*UCEntity.Event, 
 		Name:      data.Name,
 		StartTime: data.StartTime,
 		EndTime:   data.EndTime,
+		CreatedAt: data.CreatedAt,
+		UpdatedAt: data.UpdatedAt,
+	}, nil
+}
+
+func (e *event) GetEventByID(tx *gorm.DB, eventID uuid.UUID) (*UCEntity.Event, error) {
+	data, err := e.eventRepository.GetEventByID(tx, eventID)
+	if err != nil {
+		return nil, err
+	}
+	return &UCEntity.Event{
+		ID:        eventID,
+		Name:      data.Name,
+		StartTime: data.StartTime,
+		EndTime:   data.EndTime,
+		CreatedAt: data.CreatedAt,
+		UpdatedAt: data.UpdatedAt,
 	}, nil
 }
 
@@ -75,6 +93,8 @@ func (e *event) ListEventByClusterID(tx *gorm.DB, clusterID uuid.UUID) ([]UCEnti
 				Name:      event.Name,
 				StartTime: event.StartTime,
 				EndTime:   event.EndTime,
+				CreatedAt: event.CreatedAt,
+				UpdatedAt: event.UpdatedAt,
 			},
 		)
 	}
@@ -87,6 +107,8 @@ func (e *event) UpdateEvent(tx *gorm.DB, eventData *UCEntity.Event) error {
 		StartTime: eventData.StartTime,
 		EndTime:   eventData.EndTime,
 	}
+	data.CreatedAt = eventData.CreatedAt
+	data.UpdatedAt = eventData.UpdatedAt
 	data.ID.SetUUID(eventData.ID)
 	data.ClusterID.SetUUID(eventData.Cluster.ID)
 	return e.eventRepository.SaveEvent(tx, data)

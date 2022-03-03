@@ -6,6 +6,8 @@ import (
 )
 
 type Event struct {
+	CreatedAt time.Time
+	UpdatedAt time.Time
 	ID        uuid.UUID
 	Name      string
 	StartTime time.Time

@@ -176,7 +176,7 @@ func (e *event) ListEventByCluster(c *fiber.Ctx) error {
 }
 
 func (e *event) UpdateEvent(c *fiber.Ctx) error {
-	req := &request.EventDataRequest{}
+	req := &request.UpdateEventDataRequest{}
 	if err := c.BodyParser(req); err != nil {
 		return e.errorResponse(c, err.Error())
 	}
@@ -189,9 +189,17 @@ func (e *event) UpdateEvent(c *fiber.Ctx) error {
 	db := e.db.WithContext(ctx)
 	tx := db.Begin()
 
-	eventData, err := e.eventUC.GetEventByName(db, *req.Name)
+	eventData, err := e.eventUC.GetEventByID(db, *req.EventID)
 	if err != nil {
 		return e.errorResponse(c, err.Error())
+	}
+
+	if eventData.Name != *req.Name {
+		existingCluster, err := e.eventUC.GetEventByName(db, *req.Name)
+		if existingCluster != nil || err == nil {
+			return e.errorResponse(c, errorConstant.EventExist)
+		}
+		eventData.Name = *req.Name
 	}
 
 	eventData.Cluster.ID = *req.ClusterID

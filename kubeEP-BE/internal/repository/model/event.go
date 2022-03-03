@@ -7,7 +7,7 @@ import (
 
 type Event struct {
 	BaseModel
-	Name      string
+	Name      string `gorm:"uniqueIndex"`
 	StartTime time.Time
 	EndTime   time.Time
 	ClusterID gormDatatype.UUID

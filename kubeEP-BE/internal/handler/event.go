@@ -16,6 +16,7 @@ type Event interface {
 	RegisterEvents(c *fiber.Ctx) error
 	ListEventByCluster(c *fiber.Ctx) error
 	UpdateEvent(c *fiber.Ctx) error
+	GetDetailedEvent(c *fiber.Ctx) error
 }
 
 type event struct {
@@ -241,5 +242,54 @@ func (e *event) UpdateEvent(c *fiber.Ctx) error {
 	tx.Commit()
 
 	res := &response.EventCreationResponse{EventID: eventData.ID}
+	return e.successResponse(c, res)
+}
+
+func (e *event) GetDetailedEvent(c *fiber.Ctx) error {
+	req := &request.EventDetailRequest{}
+	if err := c.QueryParser(req); err != nil {
+		return e.errorResponse(c, err.Error())
+	}
+	if err := e.validatorInst.Struct(req); err != nil {
+		return e.errorResponse(c, errorConstant.InvalidQueryParam)
+	}
+
+	ctx := c.Context()
+	db := e.db.WithContext(ctx)
+
+	eventData, err := e.eventUC.GetDetailedEventData(db, *req.EventID)
+	if err != nil {
+		return e.errorResponse(c, err.Error())
+	}
+
+	var modifiedHPAConfigRes []response.ModifiedHPAConfig
+	for _, hpa := range eventData.EventModifiedHPAConfigData {
+		modifiedHPAConfigRes = append(
+			modifiedHPAConfigRes, response.ModifiedHPAConfig{
+				Name:        hpa.Name,
+				Namespace:   hpa.Namespace,
+				MinReplicas: hpa.MinReplicas,
+				MaxReplicas: hpa.MaxReplicas,
+			},
+		)
+	}
+
+	res := &response.EventDetailedResponse{
+		EventSimpleResponse: response.EventSimpleResponse{
+			ID:        eventData.ID,
+			Name:      eventData.Name,
+			StartTime: eventData.StartTime,
+			EndTime:   eventData.EndTime,
+		},
+		CreatedAt: eventData.CreatedAt,
+		UpdatedAt: eventData.UpdatedAt,
+		Cluster: response.Cluster{
+			ID:         &eventData.Cluster.ID,
+			Name:       eventData.Cluster.Name,
+			Datacenter: eventData.Cluster.Datacenter.Datacenter,
+		},
+		ModifiedHPAConfigs: modifiedHPAConfigRes,
+	}
+
 	return e.successResponse(c, res)
 }

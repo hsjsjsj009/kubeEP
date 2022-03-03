@@ -21,3 +21,7 @@ type UpdateEventDataRequest struct {
 	EventDataRequest
 	EventID *uuid.UUID `json:"event_id" validator:"required"`
 }
+
+type EventDetailRequest struct {
+	EventID *uuid.UUID `json:"event_id" query:"event_id" validator:"required"`
+}

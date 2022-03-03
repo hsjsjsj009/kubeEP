@@ -16,3 +16,8 @@ type EventDataRequest struct {
 type EventListRequest struct {
 	ClusterID *uuid.UUID `query:"cluster_id" validate:"required"`
 }
+
+type UpdateEventDataRequest struct {
+	EventDataRequest
+	EventID *uuid.UUID `json:"event_id" validator:"required"`
+}

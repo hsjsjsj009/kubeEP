@@ -15,3 +15,11 @@ type EventSimpleResponse struct {
 	StartTime time.Time `json:"start_time"`
 	EndTime   time.Time `json:"end_time"`
 }
+
+type EventDetailedResponse struct {
+	EventSimpleResponse
+	CreatedAt          time.Time           `json:"created_at"`
+	UpdatedAt          time.Time           `json:"updated_at"`
+	Cluster            Cluster             `json:"cluster"`
+	ModifiedHPAConfigs []ModifiedHPAConfig `json:"modified_hpa_configs"`
+}

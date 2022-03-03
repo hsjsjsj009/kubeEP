@@ -37,6 +37,7 @@ func BuildUseCases(
 			resources.ValidatorInst,
 			repositories.Event,
 			repositories.ScheduledHPAConfig,
+			repositories.Cluster,
 		),
 		ScheduledHPAConfig: newScheduledHPAConfig(repositories.ScheduledHPAConfig),
 		HPAConfigStatus:    newHpaConfigStatus(repositories.HPAConfigStatus),

@@ -14,3 +14,8 @@ type Event struct {
 	EndTime   time.Time
 	Cluster   ClusterData
 }
+
+type DetailedEvent struct {
+	Event
+	EventModifiedHPAConfigData []EventModifiedHPAConfigData
+}

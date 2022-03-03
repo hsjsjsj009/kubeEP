@@ -15,23 +15,30 @@ type Event interface {
 	ListEventByClusterID(tx *gorm.DB, clusterID uuid.UUID) ([]UCEntity.Event, error)
 	UpdateEvent(tx *gorm.DB, eventData *UCEntity.Event) error
 	GetEventByID(tx *gorm.DB, eventID uuid.UUID) (*UCEntity.Event, error)
+	GetDetailedEventData(tx *gorm.DB, eventID uuid.UUID) (
+		*UCEntity.DetailedEvent,
+		error,
+	)
 }
 
 type event struct {
 	validatorInst                *validator.Validate
 	eventRepository              repository.Event
 	scheduledHPAConfigRepository repository.ScheduledHPAConfig
+	clusterRepository            repository.Cluster
 }
 
 func newEvent(
 	validatorInst *validator.Validate,
 	eventRepository repository.Event,
 	scheduledHPAConfigRepository repository.ScheduledHPAConfig,
+	clusterRepository repository.Cluster,
 ) Event {
 	return &event{
 		validatorInst:                validatorInst,
 		eventRepository:              eventRepository,
 		scheduledHPAConfigRepository: scheduledHPAConfigRepository,
+		clusterRepository:            clusterRepository,
 	}
 }
 
@@ -112,4 +119,65 @@ func (e *event) UpdateEvent(tx *gorm.DB, eventData *UCEntity.Event) error {
 	data.ID.SetUUID(eventData.ID)
 	data.ClusterID.SetUUID(eventData.Cluster.ID)
 	return e.eventRepository.SaveEvent(tx, data)
+}
+
+func (e *event) GetDetailedEventData(tx *gorm.DB, eventID uuid.UUID) (
+	*UCEntity.DetailedEvent,
+	error,
+) {
+	eventData, err := e.eventRepository.GetEventByID(tx, eventID)
+	if err != nil {
+		return nil, err
+	}
+
+	clusterData, err := e.clusterRepository.GetClusterWithDatacenterByID(
+		tx,
+		eventData.ClusterID.GetUUID(),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	scheduledHPAConfigs, err := e.scheduledHPAConfigRepository.ListScheduledHPAConfigByEventID(
+		tx,
+		eventData.ID.GetUUID(),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	data := &UCEntity.DetailedEvent{
+		Event: UCEntity.Event{
+			CreatedAt: eventData.CreatedAt,
+			UpdatedAt: eventData.UpdatedAt,
+			ID:        eventID,
+			Name:      eventData.Name,
+			StartTime: eventData.StartTime,
+			EndTime:   eventData.EndTime,
+			Cluster: UCEntity.ClusterData{
+				ID:   eventData.ClusterID.GetUUID(),
+				Name: clusterData.Name,
+				Datacenter: UCEntity.DatacenterDetailedData{
+					Datacenter: clusterData.Datacenter.Datacenter,
+					Name:       clusterData.Datacenter.Name,
+				},
+			},
+		},
+	}
+
+	var eventModifiedHPAConfigData []UCEntity.EventModifiedHPAConfigData
+	for _, hpa := range scheduledHPAConfigs {
+		eventModifiedHPAConfigData = append(
+			eventModifiedHPAConfigData, UCEntity.EventModifiedHPAConfigData{
+				ID:          hpa.ID.GetUUID(),
+				Name:        hpa.Name,
+				Namespace:   hpa.Namespace,
+				MinReplicas: hpa.MinPods,
+				MaxReplicas: hpa.MaxPods,
+			},
+		)
+	}
+
+	data.EventModifiedHPAConfigData = eventModifiedHPAConfigData
+	return data, nil
 }

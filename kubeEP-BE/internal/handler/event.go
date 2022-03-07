@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"fmt"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	errorConstant "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant/errors"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/request"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/response"
@@ -246,18 +248,16 @@ func (e *event) UpdateEvent(c *fiber.Ctx) error {
 }
 
 func (e *event) GetDetailedEvent(c *fiber.Ctx) error {
-	req := &request.EventDetailRequest{}
-	if err := c.QueryParser(req); err != nil {
-		return e.errorResponse(c, err.Error())
-	}
-	if err := e.validatorInst.Struct(req); err != nil {
-		return e.errorResponse(c, errorConstant.InvalidQueryParam)
+	eventIDStr := c.Params("event_id")
+	eventID, err := uuid.Parse(eventIDStr)
+	if err != nil {
+		return e.errorResponse(c, fmt.Sprintf(errorConstant.ParamInvalid, "event_id"))
 	}
 
 	ctx := c.Context()
 	db := e.db.WithContext(ctx)
 
-	eventData, err := e.eventUC.GetDetailedEventData(db, *req.EventID)
+	eventData, err := e.eventUC.GetDetailedEventData(db, eventID)
 	if err != nil {
 		return e.errorResponse(c, err.Error())
 	}

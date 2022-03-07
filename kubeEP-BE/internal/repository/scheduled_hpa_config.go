@@ -18,6 +18,7 @@ type ScheduledHPAConfig interface {
 		tx *gorm.DB,
 		eventID uuid.UUID,
 	) error
+	DeleteAllHPAConfigByEventID(tx *gorm.DB, eventID uuid.UUID) error
 }
 
 type scheduledHPAConfig struct {
@@ -64,4 +65,8 @@ func (s *scheduledHPAConfig) DeletePermanentAllHPAConfigByEventID(
 	eventID uuid.UUID,
 ) error {
 	return tx.Unscoped().Where("event_id = ?", eventID).Delete(&model.ScheduledHPAConfig{}).Error
+}
+
+func (s *scheduledHPAConfig) DeleteAllHPAConfigByEventID(tx *gorm.DB, eventID uuid.UUID) error {
+	return tx.Delete(&model.ScheduledHPAConfig{}, "event_id = ?", eventID).Error
 }

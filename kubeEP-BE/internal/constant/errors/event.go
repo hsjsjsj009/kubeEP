@@ -1,5 +1,6 @@
 package errorConstant
 
 const (
-	EventExist = "event already exist"
+	EventExist    = "event already exist"
+	EventNotExist = "event not exist"
 )

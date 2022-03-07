@@ -19,6 +19,7 @@ type Event interface {
 		*UCEntity.DetailedEvent,
 		error,
 	)
+	DeleteEvent(tx *gorm.DB, id uuid.UUID) error
 }
 
 type event struct {
@@ -180,4 +181,8 @@ func (e *event) GetDetailedEventData(tx *gorm.DB, eventID uuid.UUID) (
 
 	data.EventModifiedHPAConfigData = eventModifiedHPAConfigData
 	return data, nil
+}
+
+func (e *event) DeleteEvent(tx *gorm.DB, id uuid.UUID) error {
+	return e.eventRepository.DeleteEvent(tx, id)
 }

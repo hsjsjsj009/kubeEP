@@ -12,6 +12,7 @@ type HPAConfigStatus interface {
 		tx *gorm.DB,
 		scheduledConfigIDs []uuid.UUID,
 	) ([]uuid.UUID, error)
+	SoftDeleteHPAConfigStatusByEventID(tx *gorm.DB, eventID uuid.UUID) error
 }
 
 type hpaConfigStatus struct {
@@ -45,4 +46,8 @@ func (h *hpaConfigStatus) CreateHPAConfigStatusForScheduledConfigIDs(
 		uuids = append(uuids, hpaConfigStatus.ID.GetUUID())
 	}
 	return uuids, nil
+}
+
+func (h *hpaConfigStatus) SoftDeleteHPAConfigStatusByEventID(tx *gorm.DB, eventID uuid.UUID) error {
+	return h.hpaConfigStatusRepo.DeleteHPAConfigStatusByEventID(tx, eventID)
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant"
 	errorConstant "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant/errors"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/request"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/response"
@@ -19,6 +20,7 @@ type Event interface {
 	ListEventByCluster(c *fiber.Ctx) error
 	UpdateEvent(c *fiber.Ctx) error
 	GetDetailedEvent(c *fiber.Ctx) error
+	DeleteEvent(c *fiber.Ctx) error
 }
 
 type event struct {
@@ -194,7 +196,7 @@ func (e *event) UpdateEvent(c *fiber.Ctx) error {
 
 	eventData, err := e.eventUC.GetEventByID(db, *req.EventID)
 	if err != nil {
-		return e.errorResponse(c, err.Error())
+		return e.errorResponse(c, errorConstant.EventNotExist)
 	}
 
 	if eventData.Name != *req.Name {
@@ -259,7 +261,7 @@ func (e *event) GetDetailedEvent(c *fiber.Ctx) error {
 
 	eventData, err := e.eventUC.GetDetailedEventData(db, eventID)
 	if err != nil {
-		return e.errorResponse(c, err.Error())
+		return e.errorResponse(c, errorConstant.EventNotExist)
 	}
 
 	var modifiedHPAConfigRes []response.ModifiedHPAConfig
@@ -292,4 +294,40 @@ func (e *event) GetDetailedEvent(c *fiber.Ctx) error {
 	}
 
 	return e.successResponse(c, res)
+}
+
+func (e *event) DeleteEvent(c *fiber.Ctx) error {
+	eventIDStr := c.Params("event_id")
+	eventID, err := uuid.Parse(eventIDStr)
+	if err != nil {
+		return e.errorResponse(c, fmt.Sprintf(errorConstant.ParamInvalid, "event_id"))
+	}
+
+	ctx := c.Context()
+	db := e.db.WithContext(ctx)
+	tx := db.Begin()
+
+	_, err = e.eventUC.GetEventByID(db, eventID)
+	if err != nil {
+		return e.errorResponse(c, errorConstant.EventNotExist)
+	}
+
+	err = e.eventUC.DeleteEvent(tx, eventID)
+	if err != nil {
+		return e.errorResponse(c, err.Error())
+	}
+
+	err = e.scheduledHPAConfigUC.SoftDeleteEventModifiedHPAConfigs(tx, eventID)
+	if err != nil {
+		return e.errorResponse(c, err.Error())
+	}
+
+	err = e.hpaConfigStatusUC.SoftDeleteHPAConfigStatusByEventID(tx, eventID)
+	if err != nil {
+		return e.errorResponse(c, err.Error())
+	}
+
+	tx.Commit()
+
+	return e.successResponse(c, constant.ActionDone)
 }

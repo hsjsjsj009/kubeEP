@@ -41,6 +41,7 @@ func buildRoute(handlers *handler.Handlers, router fiber.Router) {
 			router.Put("/update", handlers.EventHandler.UpdateEvent)
 			router.Get("/list", handlers.EventHandler.ListEventByCluster)
 			router.Get("/:event_id", handlers.EventHandler.GetDetailedEvent)
+			router.Delete("/:event_id", handlers.EventHandler.DeleteEvent)
 		},
 	)
 }

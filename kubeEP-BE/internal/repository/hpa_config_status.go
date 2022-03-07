@@ -17,6 +17,7 @@ type HPAConfigStatus interface {
 		tx *gorm.DB,
 		data []*model.HPAConfigStatus,
 	) error
+	DeleteHPAConfigStatusByEventID(tx *gorm.DB, eventID uuid.UUID) error
 }
 
 type hpaConfigStatus struct {
@@ -62,4 +63,16 @@ func (h *hpaConfigStatus) InsertBatchHPAConfigStatus(
 	data []*model.HPAConfigStatus,
 ) error {
 	return tx.Create(data).Error
+}
+
+func (h *hpaConfigStatus) DeleteHPAConfigStatusByEventID(tx *gorm.DB, eventID uuid.UUID) error {
+	return tx.Exec(
+		`
+UPDATE hpa_config_status
+set deleted_at = now()
+from scheduled_hpa_configs
+where hpa_config_status.scheduled_hpa_config_id = scheduled_hpa_configs.id and 
+      scheduled_hpa_configs.event_id = ? and hpa_config_status.deleted_at is null
+`, eventID,
+	).Error
 }

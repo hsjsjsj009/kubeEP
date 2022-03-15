@@ -15,7 +15,6 @@ type Repositories struct {
 	K8sNamespace       K8sNamespace
 	GCPCluster         GCPCluster
 	K8SDiscovery       K8SDiscovery
-	HPAConfigStatus    HPAConfigStatus
 }
 
 func Migrate(db *gorm.DB) error {
@@ -24,7 +23,6 @@ func Migrate(db *gorm.DB) error {
 		&model.Cluster{},
 		&model.Event{},
 		&model.ScheduledHPAConfig{},
-		&model.HPAConfigStatus{},
 	)
 }
 
@@ -38,6 +36,5 @@ func BuildRepositories(resources *config.KubeEPResources) *Repositories {
 		K8sNamespace:       newK8sNamespace(),
 		GCPCluster:         newGcpCluster(),
 		K8SDiscovery:       newK8sDiscovery(),
-		HPAConfigStatus:    newHpaConfigStatus(),
 	}
 }

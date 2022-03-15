@@ -29,14 +29,12 @@ type event struct {
 	db                   *gorm.DB
 	eventUC              useCase.Event
 	scheduledHPAConfigUC useCase.ScheduledHPAConfig
-	hpaConfigStatusUC    useCase.HPAConfigStatus
 }
 
 func newEventHandler(
 	validatorInst *validator.Validate,
 	eventUC useCase.Event,
 	scheduledHPAConfigUC useCase.ScheduledHPAConfig,
-	hpaConfigStatusUC useCase.HPAConfigStatus,
 	db *gorm.DB,
 	kubeHandler kubernetesBaseHandler,
 ) Event {
@@ -45,7 +43,6 @@ func newEventHandler(
 		validatorInst:         validatorInst,
 		eventUC:               eventUC,
 		scheduledHPAConfigUC:  scheduledHPAConfigUC,
-		hpaConfigStatusUC:     hpaConfigStatusUC,
 		db:                    db,
 	}
 }
@@ -128,12 +125,7 @@ func (e *event) RegisterEvents(c *fiber.Ctx) error {
 		}
 	}
 
-	hpaConfigIDs, err := e.scheduledHPAConfigUC.RegisterModifiedHPAConfigs(tx, HPAConfigs, eventID)
-	if err != nil {
-		return e.errorResponse(c, err.Error())
-	}
-
-	_, err = e.hpaConfigStatusUC.CreateHPAConfigStatusForScheduledConfigIDs(tx, hpaConfigIDs)
+	_, err = e.scheduledHPAConfigUC.RegisterModifiedHPAConfigs(tx, HPAConfigs, eventID)
 	if err != nil {
 		return e.errorResponse(c, err.Error())
 	}
@@ -229,16 +221,11 @@ func (e *event) UpdateEvent(c *fiber.Ctx) error {
 		)
 	}
 
-	newHPAConfigIDs, err := e.scheduledHPAConfigUC.RegisterModifiedHPAConfigs(
+	_, err = e.scheduledHPAConfigUC.RegisterModifiedHPAConfigs(
 		tx,
 		newModifiedHPAConfigs,
 		eventData.ID,
 	)
-	if err != nil {
-		return e.errorResponse(c, err.Error())
-	}
-
-	_, err = e.hpaConfigStatusUC.CreateHPAConfigStatusForScheduledConfigIDs(tx, newHPAConfigIDs)
 	if err != nil {
 		return e.errorResponse(c, err.Error())
 	}
@@ -318,11 +305,6 @@ func (e *event) DeleteEvent(c *fiber.Ctx) error {
 	}
 
 	err = e.scheduledHPAConfigUC.SoftDeleteEventModifiedHPAConfigs(tx, eventID)
-	if err != nil {
-		return e.errorResponse(c, err.Error())
-	}
-
-	err = e.hpaConfigStatusUC.SoftDeleteHPAConfigStatusByEventID(tx, eventID)
 	if err != nil {
 		return e.errorResponse(c, err.Error())
 	}

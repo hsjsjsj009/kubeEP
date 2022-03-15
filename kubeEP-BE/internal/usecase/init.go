@@ -12,8 +12,6 @@ type UseCases struct {
 	Datacenter         Datacenter
 	Event              Event
 	ScheduledHPAConfig ScheduledHPAConfig
-	HPAConfigStatus    HPAConfigStatus
-	Cron               Cron
 }
 
 func BuildUseCases(
@@ -41,7 +39,5 @@ func BuildUseCases(
 			repositories.Cluster,
 		),
 		ScheduledHPAConfig: newScheduledHPAConfig(repositories.ScheduledHPAConfig),
-		HPAConfigStatus:    newHpaConfigStatus(repositories.HPAConfigStatus),
-		Cron:               newCron(repositories.Datacenter, repositories.Event),
 	}
 }

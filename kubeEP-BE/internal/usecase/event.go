@@ -7,6 +7,7 @@ import (
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/repository"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/repository/model"
 	"gorm.io/gorm"
+	"time"
 )
 
 type Event interface {
@@ -20,6 +21,10 @@ type Event interface {
 		error,
 	)
 	DeleteEvent(tx *gorm.DB, id uuid.UUID) error
+	GetAllPendingExecutableEvent(tx *gorm.DB, now time.Time) (
+		[]*UCEntity.Event,
+		error,
+	)
 }
 
 type event struct {
@@ -70,6 +75,8 @@ func (e *event) GetEventByName(tx *gorm.DB, eventName string) (*UCEntity.Event, 
 		EndTime:   data.EndTime,
 		CreatedAt: data.CreatedAt,
 		UpdatedAt: data.UpdatedAt,
+		Status:    data.Status,
+		Message:   data.Message,
 	}, nil
 }
 
@@ -85,6 +92,8 @@ func (e *event) GetEventByID(tx *gorm.DB, eventID uuid.UUID) (*UCEntity.Event, e
 		EndTime:   data.EndTime,
 		CreatedAt: data.CreatedAt,
 		UpdatedAt: data.UpdatedAt,
+		Status:    data.Status,
+		Message:   data.Message,
 	}, nil
 }
 
@@ -103,6 +112,8 @@ func (e *event) ListEventByClusterID(tx *gorm.DB, clusterID uuid.UUID) ([]UCEnti
 				EndTime:   event.EndTime,
 				CreatedAt: event.CreatedAt,
 				UpdatedAt: event.UpdatedAt,
+				Status:    event.Status,
+				Message:   event.Message,
 			},
 		)
 	}
@@ -114,6 +125,8 @@ func (e *event) UpdateEvent(tx *gorm.DB, eventData *UCEntity.Event) error {
 		Name:      eventData.Name,
 		StartTime: eventData.StartTime,
 		EndTime:   eventData.EndTime,
+		Status:    eventData.Status,
+		Message:   eventData.Message,
 	}
 	data.CreatedAt = eventData.CreatedAt
 	data.UpdatedAt = eventData.UpdatedAt
@@ -154,6 +167,8 @@ func (e *event) GetDetailedEventData(tx *gorm.DB, eventID uuid.UUID) (
 			ID:        eventID,
 			Name:      eventData.Name,
 			StartTime: eventData.StartTime,
+			Status:    eventData.Status,
+			Message:   eventData.Message,
 			EndTime:   eventData.EndTime,
 			Cluster: UCEntity.ClusterData{
 				ID:   eventData.ClusterID.GetUUID(),
@@ -173,6 +188,8 @@ func (e *event) GetDetailedEventData(tx *gorm.DB, eventID uuid.UUID) (
 				ID:          hpa.ID.GetUUID(),
 				Name:        hpa.Name,
 				Namespace:   hpa.Namespace,
+				Status:      hpa.Status,
+				Message:     hpa.Message,
 				MinReplicas: hpa.MinPods,
 				MaxReplicas: hpa.MaxPods,
 			},
@@ -185,4 +202,33 @@ func (e *event) GetDetailedEventData(tx *gorm.DB, eventID uuid.UUID) (
 
 func (e *event) DeleteEvent(tx *gorm.DB, id uuid.UUID) error {
 	return e.eventRepository.DeleteEvent(tx, id)
+}
+
+func (e *event) GetAllPendingExecutableEvent(tx *gorm.DB, now time.Time) (
+	[]*UCEntity.Event,
+	error,
+) {
+	events, err := e.eventRepository.FindPendingEventWithIntervalMinute(tx, 15, now)
+	if err != nil {
+		return nil, err
+	}
+	var eventsData []*UCEntity.Event
+	for _, event := range events {
+		eventsData = append(
+			eventsData, &UCEntity.Event{
+				CreatedAt: event.CreatedAt,
+				UpdatedAt: event.UpdatedAt,
+				ID:        event.ID.GetUUID(),
+				Status:    event.Status,
+				Name:      event.Name,
+				Message:   event.Message,
+				StartTime: event.StartTime,
+				EndTime:   event.EndTime,
+				Cluster:   UCEntity.ClusterData{ID: event.ClusterID.GetUUID()},
+			},
+		)
+	}
+
+	return eventsData, nil
+
 }

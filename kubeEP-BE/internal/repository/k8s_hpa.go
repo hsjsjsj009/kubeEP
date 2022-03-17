@@ -39,21 +39,21 @@ type K8sHPA interface {
 	UpdateV2beta1HPA(
 		ctx context.Context,
 		client kubernetes.Interface,
-		namespace v1Core.Namespace,
+		namespace string,
 		clusterID uuid.UUID,
 		hpa *v2beta1.HorizontalPodAutoscaler,
 	) (*v2beta1.HorizontalPodAutoscaler, error)
 	UpdateV1HPA(
 		ctx context.Context,
 		client kubernetes.Interface,
-		namespace v1Core.Namespace,
+		namespace string,
 		clusterID uuid.UUID,
 		hpa *v1Autoscale.HorizontalPodAutoscaler,
 	) (*v1Autoscale.HorizontalPodAutoscaler, error)
 	UpdateV2beta2HPA(
 		ctx context.Context,
 		client kubernetes.Interface,
-		namespace v1Core.Namespace,
+		namespace string,
 		clusterID uuid.UUID,
 		hpa *v2beta2.HorizontalPodAutoscaler,
 	) (*v2beta2.HorizontalPodAutoscaler, error)
@@ -208,14 +208,14 @@ func (h *k8sHPA) GetAllV2beta1HPA(
 func (h *k8sHPA) UpdateV1HPA(
 	ctx context.Context,
 	client kubernetes.Interface,
-	namespace v1Core.Namespace,
+	namespace string,
 	clusterID uuid.UUID,
 	hpa *v1Autoscale.HorizontalPodAutoscaler,
 ) (*v1Autoscale.HorizontalPodAutoscaler, error) {
-	key := fmt.Sprintf("hpa_v1_list_cluster_%s_ns_%s", clusterID, namespace.Name)
+	key := fmt.Sprintf("hpa_v1_list_cluster_%s_ns_%s", clusterID, namespace)
 	data, err := client.
 		AutoscalingV1().
-		HorizontalPodAutoscalers(namespace.Name).
+		HorizontalPodAutoscalers(namespace).
 		Update(
 			ctx,
 			hpa,
@@ -233,14 +233,14 @@ func (h *k8sHPA) UpdateV1HPA(
 func (h *k8sHPA) UpdateV2beta2HPA(
 	ctx context.Context,
 	client kubernetes.Interface,
-	namespace v1Core.Namespace,
+	namespace string,
 	clusterID uuid.UUID,
 	hpa *v2beta2.HorizontalPodAutoscaler,
 ) (*v2beta2.HorizontalPodAutoscaler, error) {
-	key := fmt.Sprintf("hpa_v2_beta_2_list_cluster_%s_ns_%s", clusterID, namespace.Name)
+	key := fmt.Sprintf("hpa_v2_beta_2_list_cluster_%s_ns_%s", clusterID, namespace)
 	data, err := client.
 		AutoscalingV2beta2().
-		HorizontalPodAutoscalers(namespace.Name).
+		HorizontalPodAutoscalers(namespace).
 		Update(
 			ctx,
 			hpa,
@@ -260,14 +260,14 @@ func (h *k8sHPA) UpdateV2beta2HPA(
 func (h *k8sHPA) UpdateV2beta1HPA(
 	ctx context.Context,
 	client kubernetes.Interface,
-	namespace v1Core.Namespace,
+	namespace string,
 	clusterID uuid.UUID,
 	hpa *v2beta1.HorizontalPodAutoscaler,
 ) (*v2beta1.HorizontalPodAutoscaler, error) {
-	key := fmt.Sprintf("hpa_v2_beta_1_list_cluster_%s_ns_%s", clusterID, namespace.Name)
+	key := fmt.Sprintf("hpa_v2_beta_1_list_cluster_%s_ns_%s", clusterID, namespace)
 	data, err := client.
 		AutoscalingV2beta1().
-		HorizontalPodAutoscalers(namespace.Name).
+		HorizontalPodAutoscalers(namespace).
 		Update(
 			ctx,
 			hpa,

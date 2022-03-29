@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"github.com/go-playground/validator/v10"
 	"github.com/go-redis/redis/v8"
-	"github.com/gofiber/fiber/v2"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/config"
-	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/handler"
+	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/cron"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/repository"
 	useCase "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/usecase"
 	log "github.com/sirupsen/logrus"
@@ -17,9 +16,8 @@ import (
 	"time"
 )
 
-func runServer(configData *config.Config) {
+func runService(configData *config.Config) {
 	ctx := context.Background()
-	app := fiber.New()
 
 	// Bootstrap DB
 	newDBLogger := logger.New(
@@ -93,8 +91,6 @@ func runServer(configData *config.Config) {
 
 	repositories := repository.BuildRepositories(resources)
 	useCases := useCase.BuildUseCases(resources, repositories)
-	handlers := handler.BuildHandlers(useCases, resources)
-	buildRoute(handlers, app)
-
-	log.Fatal(app.Listen(":8000"))
+	cronInst := cron.BuildCron(useCases, resources)
+	cronInst.Start()
 }

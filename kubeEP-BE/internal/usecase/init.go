@@ -12,7 +12,6 @@ type UseCases struct {
 	Datacenter         Datacenter
 	Event              Event
 	ScheduledHPAConfig ScheduledHPAConfig
-	HPAConfigStatus    HPAConfigStatus
 }
 
 func BuildUseCases(
@@ -31,6 +30,7 @@ func BuildUseCases(
 			repositories.K8sHPA,
 			repositories.K8sNamespace,
 			repositories.K8SDiscovery,
+			repositories.K8sDeployment,
 		),
 		Datacenter: newDatacenter(resources.ValidatorInst, repositories.Datacenter),
 		Event: newEvent(
@@ -40,6 +40,5 @@ func BuildUseCases(
 			repositories.Cluster,
 		),
 		ScheduledHPAConfig: newScheduledHPAConfig(repositories.ScheduledHPAConfig),
-		HPAConfigStatus:    newHpaConfigStatus(repositories.HPAConfigStatus),
 	}
 }

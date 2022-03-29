@@ -19,5 +19,5 @@ func main() {
 
 	gcpCustomAuth.RegisterK8SGCPCustomAuthProvider()
 
-	runServer(configData)
+	runService(configData)
 }

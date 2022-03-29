@@ -39,6 +39,24 @@ type Cluster interface {
 		constant.HPAVersion,
 		error,
 	)
+	GetAllK8sHPAObjectInCluster(
+		ctx context.Context,
+		client kubernetes.Interface,
+		clusterID uuid.UUID,
+		latestHPAVersion constant.HPAVersion,
+	) (output []interface{}, err error)
+	UpdateHPAK8sObjectBatch(
+		ctx context.Context,
+		client kubernetes.Interface,
+		clusterID uuid.UUID,
+		hpaObjectList []interface{},
+	) error
+	ResolveScaleTargetRef(
+		ctx context.Context,
+		client kubernetes.Interface,
+		scaleTargetRef interface{},
+		namespace string,
+	) (res interface{}, err error)
 }
 
 type cluster struct {
@@ -46,6 +64,7 @@ type cluster struct {
 	clusterRepo     repository.Cluster
 	hpaRepo         repository.K8sHPA
 	namespaceRepo   repository.K8sNamespace
+	deploymentRepo  repository.K8sDeployment
 	discoveryRepo   repository.K8SDiscovery
 	gcpDatacenterUC GCPDatacenter
 	gcpClusterUC    GCPCluster
@@ -57,13 +76,15 @@ func newCluster(
 	hpaRepo repository.K8sHPA,
 	namespaceRepo repository.K8sNamespace,
 	discoveryRepo repository.K8SDiscovery,
+	deploymentRepo repository.K8sDeployment,
 ) Cluster {
 	return &cluster{
-		validatorInst: validatorInst,
-		clusterRepo:   clusterRepo,
-		hpaRepo:       hpaRepo,
-		namespaceRepo: namespaceRepo,
-		discoveryRepo: discoveryRepo,
+		validatorInst:  validatorInst,
+		clusterRepo:    clusterRepo,
+		hpaRepo:        hpaRepo,
+		namespaceRepo:  namespaceRepo,
+		discoveryRepo:  discoveryRepo,
+		deploymentRepo: deploymentRepo,
 	}
 }
 
@@ -263,4 +284,252 @@ func (c *cluster) GetAllHPAInCluster(
 		}
 	}
 	return output, nil
+}
+
+func (c *cluster) GetAllK8sHPAObjectInCluster(
+	ctx context.Context,
+	client kubernetes.Interface,
+	clusterID uuid.UUID,
+	latestHPAVersion constant.HPAVersion,
+) (output []interface{}, err error) {
+	namespaces, err := c.namespaceRepo.GetAllNamespace(ctx, client)
+	if err != nil {
+		return nil, err
+	}
+	var lock sync.Mutex
+	eg, ctxEg := errgroup.WithContext(ctx)
+
+	for _, namespace := range namespaces {
+		loadFunc := func(ns v1Core.Namespace) func() error {
+			return func() error {
+				switch latestHPAVersion {
+				case constant.AutoscalingV1:
+					response, err := c.hpaRepo.GetAllV1HPA(ctxEg, client, ns, clusterID)
+					if err != nil {
+						if ctxEg.Err() != nil {
+							return nil
+						}
+						return err
+					}
+					lock.Lock()
+					for _, hO := range response {
+						output = append(output, hO)
+					}
+					lock.Unlock()
+				case constant.AutoscalingV2Beta1:
+					response, err := c.hpaRepo.GetAllV2beta1HPA(ctxEg, client, ns, clusterID)
+					if err != nil {
+						if ctxEg.Err() != nil {
+							return nil
+						}
+						return err
+					}
+					lock.Lock()
+					for _, hO := range response {
+						output = append(output, hO)
+					}
+					lock.Unlock()
+				case constant.AutoscalingV2Beta2:
+					response, err := c.hpaRepo.GetAllV2beta2HPA(ctxEg, client, ns, clusterID)
+					if err != nil {
+						if ctxEg.Err() != nil {
+							return nil
+						}
+						return err
+					}
+					lock.Lock()
+					for _, hO := range response {
+						output = append(output, hO)
+					}
+					lock.Unlock()
+				default:
+					return errors.New(errorConstant.HPAVersionUnknown)
+				}
+				return nil
+			}
+		}
+		eg.Go(loadFunc(namespace))
+	}
+	if err := eg.Wait(); err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+func (c *cluster) GetAllK8sHPAObjectInList(
+	ctx context.Context,
+	client kubernetes.Interface,
+	clusterID uuid.UUID,
+	hpaList []UCEntity.SimpleHPAData,
+	latestHPAVersion constant.HPAVersion,
+) ([]interface{}, error) {
+	errGroup, ctxEg := errgroup.WithContext(ctx)
+	var lock sync.Mutex
+	hpaObjectList := make([]interface{}, len(hpaList))
+	for idx, hpa := range hpaList {
+		errGroup.Go(
+			func(h UCEntity.SimpleHPAData, i int) func() error {
+				return func() error {
+					var object interface{}
+					var err error
+					switch latestHPAVersion {
+					case constant.AutoscalingV1:
+						object, err = c.hpaRepo.GetV1HPA(
+							ctxEg,
+							client,
+							h.Name,
+							h.Namespace,
+							clusterID,
+						)
+						if err != nil {
+							if ctxEg.Err() != nil {
+								return nil
+							}
+							return err
+						}
+					case constant.AutoscalingV2Beta1:
+						object, err = c.hpaRepo.GetV2beta1HPA(
+							ctxEg,
+							client,
+							h.Name,
+							h.Namespace,
+							clusterID,
+						)
+						if err != nil {
+							if ctxEg.Err() != nil {
+								return nil
+							}
+							return err
+						}
+					case constant.AutoscalingV2Beta2:
+						object, err = c.hpaRepo.GetV2beta2HPA(
+							ctxEg,
+							client,
+							h.Name,
+							h.Namespace,
+							clusterID,
+						)
+						if err != nil {
+							if ctxEg.Err() != nil {
+								return nil
+							}
+							return err
+						}
+					}
+					lock.Lock()
+					hpaObjectList[i] = object
+					lock.Unlock()
+
+					return nil
+				}
+			}(hpa, idx),
+		)
+	}
+
+	if err := errGroup.Wait(); err != nil {
+		return nil, err
+	}
+
+	return hpaObjectList, nil
+}
+
+func (c *cluster) UpdateHPAK8sObjectBatch(
+	ctx context.Context,
+	client kubernetes.Interface,
+	clusterID uuid.UUID,
+	hpaObjectList []interface{},
+) error {
+	errGroup, ctxEg := errgroup.WithContext(ctx)
+	for _, hpaObject := range hpaObjectList {
+		errGroup.Go(
+			func(hO interface{}) func() error {
+				return func() error {
+					switch h := hO.(type) {
+					case *v1hpa.HorizontalPodAutoscaler:
+						h.ResourceVersion = ""
+						_, err := c.hpaRepo.UpdateV1HPA(ctxEg, client, h.Namespace, clusterID, h)
+						if err != nil {
+							if ctxEg.Err() != nil {
+								return nil
+							}
+						}
+						return err
+					case *v2beta1.HorizontalPodAutoscaler:
+						h.ResourceVersion = ""
+						_, err := c.hpaRepo.UpdateV2beta1HPA(
+							ctxEg,
+							client,
+							h.Namespace,
+							clusterID,
+							h,
+						)
+						if err != nil {
+							if ctxEg.Err() != nil {
+								return nil
+							}
+						}
+						return err
+					case *v2beta2.HorizontalPodAutoscaler:
+						h.ResourceVersion = ""
+						_, err := c.hpaRepo.UpdateV2beta2HPA(
+							ctxEg,
+							client,
+							h.Namespace,
+							clusterID,
+							h,
+						)
+						if err != nil {
+							if ctxEg.Err() != nil {
+								return nil
+							}
+						}
+						return err
+					default:
+						return errors.New("unknown type")
+					}
+				}
+			}(hpaObject),
+		)
+	}
+	return errGroup.Wait()
+}
+
+func (c *cluster) ResolveScaleTargetRef(
+	ctx context.Context,
+	client kubernetes.Interface,
+	scaleTargetRef interface{},
+	namespace string,
+) (res interface{}, err error) {
+	var apiVersion, kind, name string
+
+	switch ref := scaleTargetRef.(type) {
+	case v1hpa.CrossVersionObjectReference:
+		apiVersion = ref.APIVersion
+		kind = ref.Kind
+		name = ref.Name
+	case v2beta1.CrossVersionObjectReference:
+		apiVersion = ref.APIVersion
+		kind = ref.Kind
+		name = ref.Name
+	case v2beta2.CrossVersionObjectReference:
+		apiVersion = ref.APIVersion
+		kind = ref.Kind
+		name = ref.Name
+	default:
+		return nil, errors.New(errorConstant.HPAVersionUnknown)
+	}
+
+	switch apiVersion {
+	case constant.AppsV1:
+	default:
+		return nil, errors.New(errorConstant.TargetRefResolveError)
+	}
+
+	switch kind {
+	case constant.Deployment:
+		res, err = c.deploymentRepo.GetDeployment(ctx, client, namespace, name)
+	default:
+		return nil, errors.New(errorConstant.TargetRefResolveError)
+	}
+	return
 }

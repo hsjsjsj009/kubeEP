@@ -1,7 +1,7 @@
 version: '3.2'
 services:
-  postgres:
-    image: postgres
+  db:
+    image: timescale/timescaledb:latest-pg14
     network_mode: bridge
     environment:
       - POSTGRES_PASSWORD=postgres

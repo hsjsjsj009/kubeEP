@@ -10,10 +10,10 @@ import (
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/handler"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/repository"
 	useCase "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/usecase"
+	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"log"
 	"time"
 )
 
@@ -23,7 +23,7 @@ func runServer(configData *config.Config) {
 
 	// Bootstrap DB
 	newDBLogger := logger.New(
-		log.Default(),
+		log.StandardLogger(),
 		logger.Config{
 			SlowThreshold:             time.Second,
 			LogLevel:                  logger.Info,

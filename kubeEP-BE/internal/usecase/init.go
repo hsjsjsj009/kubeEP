@@ -30,6 +30,7 @@ func BuildUseCases(
 			repositories.K8sHPA,
 			repositories.K8sNamespace,
 			repositories.K8SDiscovery,
+			repositories.K8sDeployment,
 		),
 		Datacenter: newDatacenter(resources.ValidatorInst, repositories.Datacenter),
 		Event: newEvent(

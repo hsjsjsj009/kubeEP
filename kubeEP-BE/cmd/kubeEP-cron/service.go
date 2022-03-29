@@ -1,27 +1,27 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/go-playground/validator/v10"
 	"github.com/go-redis/redis/v8"
-	"github.com/gofiber/fiber/v2"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/config"
+	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/cron"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/repository"
 	useCase "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/usecase"
+	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"log"
 	"time"
 )
 
 func runService(configData *config.Config) {
 	ctx := context.Background()
-	app := fiber.New()
 
 	// Bootstrap DB
 	newDBLogger := logger.New(
-		log.Default(),
+		log.StandardLogger(),
 		logger.Config{
 			SlowThreshold:             time.Second,
 			LogLevel:                  logger.Info,
@@ -91,4 +91,6 @@ func runService(configData *config.Config) {
 
 	repositories := repository.BuildRepositories(resources)
 	useCases := useCase.BuildUseCases(resources, repositories)
+	cronInst := cron.BuildCron(useCases, resources)
+	cronInst.Start()
 }

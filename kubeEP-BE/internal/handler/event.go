@@ -199,7 +199,8 @@ func (e *event) UpdateEvent(c *fiber.Ctx) error {
 		eventData.Name = *req.Name
 	}
 
-	eventData.Cluster.ID = *req.ClusterID
+	eventData.StartTime = *req.StartTime
+	eventData.EndTime = *req.EndTime
 
 	if err := e.eventUC.UpdateEvent(tx, eventData); err != nil {
 		return e.errorResponse(c, err.Error())

@@ -94,6 +94,7 @@ func (e *event) GetEventByID(tx *gorm.DB, eventID uuid.UUID) (*UCEntity.Event, e
 		UpdatedAt: data.UpdatedAt,
 		Status:    data.Status,
 		Message:   data.Message,
+		Cluster:   UCEntity.ClusterData{ID: data.ClusterID.GetUUID()},
 	}, nil
 }
 

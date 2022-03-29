@@ -18,8 +18,11 @@ type EventListRequest struct {
 }
 
 type UpdateEventDataRequest struct {
-	EventDataRequest
-	EventID *uuid.UUID `json:"event_id" validator:"required"`
+	Name               *string                      `json:"name" validate:"required"`
+	StartTime          *time.Time                   `json:"start_time" validate:"required"`
+	EndTime            *time.Time                   `json:"end_time" validate:"required,gtefield=StartTime"`
+	ModifiedHPAConfigs []EventModifiedHPAConfigData `json:"modified_hpa_configs" validate:"required,min=1,dive"`
+	EventID            *uuid.UUID                   `json:"event_id" validator:"required"`
 }
 
 type EventDetailRequest struct {

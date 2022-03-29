@@ -42,6 +42,13 @@ func (e *event) GetEventByName(tx *gorm.DB, name string) (*model.Event, error) {
 func (e *event) ListEventByClusterID(tx *gorm.DB, id uuid.UUID) ([]*model.Event, error) {
 	var data []*model.Event
 	tx = tx.Model(&model.Event{}).Where("cluster_id = ?", id).Find(&data)
+	//now, _ := time.Parse(time.RFC3339, "2022-03-26T18:49:04.988Z")
+	//tx = tx.Model(&model.Event{}).Where(
+	//	"date_trunc('minutes', start_time::timestamp) - date_trunc('minutes', ?::timestamp) = ? * interval '1 minutes' and status = ?",
+	//	now.UTC(),
+	//	15,
+	//	model.EventPending,
+	//).Find(&data)
 	return data, tx.Error
 }
 
@@ -63,11 +70,11 @@ func (e *event) FindPendingEventWithIntervalMinute(tx *gorm.DB, minute int, now 
 ) {
 	var data []*model.Event
 	tx = tx.Model(&model.Event{}).Where(
-		"date_trunc('minutes', start_time) - date_trunc('minutes', ?) = interval '? minutes' and status = ?",
+		"start_time - ? < ? * interval '1 minutes'",
 		now.UTC(),
-		minute,
-		model.EventPending,
-	).Find(&data)
+		minute+1,
+	).Where("status = ?", model.EventPending).Find(&data)
+	//tx = tx.Model(&model.Event{}).Where("status = ?", model.EventPending).Find(&data)
 	if err := tx.Error; err != nil {
 		return nil, err
 	}

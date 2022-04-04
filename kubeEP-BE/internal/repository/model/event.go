@@ -11,6 +11,8 @@ const (
 	EventFailed    EventStatus = "FAILED"
 	EventSuccess   EventStatus = "SUCCESS"
 	EventExecuting EventStatus = "EXECUTING"
+	EventPrescaled EventStatus = "PRESCALED"
+	EventWatching  EventStatus = "WATCHING"
 	EventPending   EventStatus = "PENDING"
 )
 

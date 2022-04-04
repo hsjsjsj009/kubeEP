@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant"
 	errorConstant "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant/errors"
 	UCEntity "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/usecase"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/repository/model"
@@ -20,8 +21,10 @@ import (
 	v1Option "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"math"
+	"os/signal"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -56,7 +59,7 @@ func newCron(
 	}
 }
 
-func (c *cron) handleError(db *gorm.DB, e *UCEntity.Event, errMsg string) {
+func (c *cron) handleExecEventError(db *gorm.DB, e *UCEntity.Event, errMsg string) {
 	e.Status = model.EventFailed
 	e.Message = errMsg
 	err := c.eventUC.UpdateEvent(db, e)
@@ -64,6 +67,15 @@ func (c *cron) handleError(db *gorm.DB, e *UCEntity.Event, errMsg string) {
 		log.Errorf("[EventCronJob] Error Update Event : %s", err.Error())
 	}
 	log.Errorf("[EventCronJob] Event : %s, Error : %s", e.Name, errMsg)
+}
+
+func (c *cron) handleWatchEvent(db *gorm.DB, e *UCEntity.Event, errMsg string) {
+	e.Message = errMsg
+	err := c.eventUC.UpdateEvent(db, e)
+	if err != nil {
+		log.Errorf("[EventCronJob] Error Update Event : %s", err.Error())
+	}
+	log.Errorf("[EventCronJob] Watching event : %s, Error : %s", e.Name, errMsg)
 }
 
 func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
@@ -79,7 +91,7 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 	clusterID := e.Cluster.ID
 	clusterData, err := c.clusterUC.GetClusterAndDatacenterDataByClusterID(db, clusterID)
 	if err != nil {
-		c.handleError(db, e, err.Error())
+		c.handleExecEventError(db, e, err.Error())
 		return
 	}
 	datacenter := clusterData.Datacenter.Datacenter
@@ -91,14 +103,14 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 	case model.GCP:
 		kubernetesClient, googleContainerClient, err = c.getAllGCPClient(ctx, clusterData)
 		if err != nil {
-			c.handleError(db, e, err.Error())
+			c.handleExecEventError(db, e, err.Error())
 			return
 		}
 	}
 
 	modifiedHPAs, err := c.scheduledHPAConfigUC.ListScheduledHPAConfigByEventID(db, e.ID)
 	if err != nil {
-		c.handleError(db, e, err.Error())
+		c.handleExecEventError(db, e, err.Error())
 		return
 	}
 
@@ -111,7 +123,7 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 		clusterData.LatestHPAAPIVersion,
 	)
 	if err != nil {
-		c.handleError(db, e, err.Error())
+		c.handleExecEventError(db, e, err.Error())
 		return
 	}
 
@@ -164,7 +176,7 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 	}
 
 	if len(selectedK8sHPAs) == 0 {
-		c.handleError(db, e, "no hpa exist")
+		c.handleExecEventError(db, e, "no hpa exist")
 		return
 	}
 
@@ -181,7 +193,7 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 		},
 	)
 	if err != nil {
-		c.handleError(db, e, err.Error())
+		c.handleExecEventError(db, e, err.Error())
 		return
 	}
 
@@ -192,7 +204,7 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 		v1Option.ListOptions{},
 	)
 	if err != nil {
-		c.handleError(db, e, err.Error())
+		c.handleExecEventError(db, e, err.Error())
 		return
 	}
 	linuxDaemonSetsPodAmount := int64(0)
@@ -235,7 +247,8 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 				nodes, err := kubernetesClient.CoreV1().Nodes().List(
 					ctxEg, v1Option.ListOptions{
 						LabelSelector: fmt.Sprintf(
-							"cloud.google.com/gke-nodepool=%s",
+							"%s=%s",
+							constant.GCPNodePoolLabel,
 							nP.Name,
 						),
 						Limit: 1,
@@ -264,7 +277,7 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 	}
 
 	if err := errGroup.Wait(); err != nil {
-		c.handleError(db, e, err.Error())
+		c.handleExecEventError(db, e, err.Error())
 		return
 	}
 
@@ -354,7 +367,7 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 							return err
 						}
 						for _, node := range selectedNode.Items {
-							nodePoolName := node.Labels["cloud.google.com/gke-nodepool"]
+							nodePoolName := node.Labels[constant.GCPNodePoolLabel]
 							hpaNodePools[nodePoolName] = true
 						}
 					}
@@ -387,7 +400,7 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 	}
 
 	if err := errGroup.Wait(); err != nil {
-		c.handleError(db, e, err.Error())
+		c.handleExecEventError(db, e, err.Error())
 		return
 	}
 
@@ -438,7 +451,7 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 					)
 
 					newMaxNode := autoscalingData.MaxNodeCount
-					
+
 					if maxNeededNode > 0 {
 						newMaxNode += maxNeededNode + 5
 					}
@@ -500,7 +513,7 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 	}
 
 	if err := errGroup.Wait(); err != nil {
-		c.handleError(db, e, err.Error())
+		c.handleExecEventError(db, e, err.Error())
 		return
 	}
 
@@ -508,7 +521,7 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 	log.Infof("[EventCronJob] Event : %s, Updating K8s HPA with new configuration", e.Name)
 	err = c.clusterUC.UpdateHPAK8sObjectBatch(ctx, kubernetesClient, clusterID, selectedK8sHPAs)
 	if err != nil {
-		c.handleError(db, e, err.Error())
+		c.handleExecEventError(db, e, err.Error())
 		return
 	}
 
@@ -520,7 +533,7 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 			"",
 		)
 		if err != nil {
-			c.handleError(
+			c.handleExecEventError(
 				db, e, fmt.Sprintf(
 					"Error Update HPA %s Namespace %s : %s", existingModifiedHPA.Name,
 					existingModifiedHPA.Namespace,
@@ -531,7 +544,7 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 		}
 	}
 
-	e.Status = model.EventSuccess
+	e.Status = model.EventPrescaled
 
 	err = c.eventUC.UpdateEvent(db, e)
 	if err != nil {
@@ -541,26 +554,145 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 	log.Infof("[EventCronJob] Event : %s, Done executing update and calculation", e.Name)
 }
 
+func (c *cron) watchNodePool(
+	client kubernetes.Interface,
+	db *gorm.DB,
+	provider model.DatacenterProvider,
+	event *UCEntity.Event,
+	now time.Time,
+	ctx context.Context,
+) {
+	nodes, err := client.CoreV1().Nodes().List(ctx, v1Option.ListOptions{})
+	if err != nil {
+		log.Errorf(
+			"[EventCronJob] Watching event : %s, Watch node pool error : %s",
+			event.Name,
+			err.Error(),
+		)
+		return
+	}
+	nodeCounts := map[string]int32{}
+	for _, node := range nodes.Items {
+		nodeLabels := node.Labels
+		var nodePoolName string
+		switch provider {
+		case model.GCP:
+			nodePoolName = nodeLabels[constant.GCPNodePoolLabel]
+			nodeCounts[nodePoolName] += 1
+		}
+	}
+
+	var nodePoolStatusObjects []model.NodePoolStatus
+	for nodePoolName, nodeCount := range nodeCounts {
+		nodePoolStatus := model.NodePoolStatus{
+			CreatedAt: now,
+			NodeCount: nodeCount,
+			Name:      nodePoolName,
+		}
+		nodePoolStatus.EventID.SetUUID(event.ID)
+		nodePoolStatusObjects = append(nodePoolStatusObjects, nodePoolStatus)
+	}
+
+	err = db.Create(&nodePoolStatusObjects).Error
+	if err != nil {
+		log.Errorf(
+			"[EventCronJob] Watching event : %s, Watch node pool error : %s",
+			event.Name,
+			err.Error(),
+		)
+	}
+	log.Infof(
+		"[EventCronJob] Watching event : %s, Watching node pool at : %s",
+		event.Name,
+		now,
+	)
+}
+
+func (c *cron) watchEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
+	log.Infof("[EventCronJob] Watching event %s", e.Name)
+	e.Status = model.EventWatching
+
+	err := c.eventUC.UpdateEvent(db, e)
+	if err != nil {
+		log.Errorf("[EventCronJob] Error update event : %s", err.Error())
+		return
+	}
+
+	clusterID := e.Cluster.ID
+	clusterData, err := c.clusterUC.GetClusterAndDatacenterDataByClusterID(db, clusterID)
+	if err != nil {
+		c.handleExecEventError(db, e, err.Error())
+		return
+	}
+	datacenter := clusterData.Datacenter.Datacenter
+	var kubernetesClient kubernetes.Interface
+
+	// Get Clients
+	switch datacenter {
+	case model.GCP:
+		kubernetesClient, _, err = c.getAllGCPClient(ctx, clusterData)
+		if err != nil {
+			c.handleExecEventError(db, e, err.Error())
+			return
+		}
+	}
+
+	endTime := e.EndTime
+	watcherTicker := time.NewTicker(30 * time.Second)
+	defer watcherTicker.Stop()
+	for {
+		select {
+		case now := <-watcherTicker.C:
+			if now.After(endTime) {
+				return
+			}
+
+			go c.watchNodePool(kubernetesClient, db, datacenter, e, now, ctx)
+		case <-ctx.Done():
+			return
+		}
+	}
+
+}
+
 func (c *cron) Start() {
 	log.Infof("Starting event cron job")
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer cancel()
+	db := c.tx.WithContext(ctx)
+	mainTicker := time.NewTicker(1 * time.Minute)
+	defer mainTicker.Stop()
 	for {
-		ctx := context.Background()
-		db := c.tx.WithContext(ctx)
+		select {
+		case now := <-mainTicker.C:
+			go func() {
+				pendingEvents, err := c.eventUC.GetAllPendingExecutableEvent(db, now)
+				if err != nil {
+					log.Errorf(
+						"[EventCronJob] Error getting pending executable events : %s",
+						err.Error(),
+					)
+				}
+				if len(pendingEvents) != 0 && err == nil {
+					for _, pendingEvent := range pendingEvents {
+						go c.execEvent(pendingEvent, db, ctx)
+					}
+				}
+			}()
 
-		now := time.Now()
-		events, err := c.eventUC.GetAllPendingExecutableEvent(db, now)
-		if err != nil {
-			log.Errorf("[EventCronJob] Error Getting Events : %s", err.Error())
-			time.Sleep(1 * time.Minute)
-			continue
+			go func() {
+				prescaledEvents, err := c.eventUC.GetAllPrescaledEvent(db, -5*time.Minute)
+				if err != nil {
+					log.Errorf("[EventCronJob] Error getting prescaled events : %s", err.Error())
+				}
+				if len(prescaledEvents) != 0 && err == nil {
+					for _, prescaledEvent := range prescaledEvents {
+						go c.watchEvent(prescaledEvent, db, ctx)
+					}
+				}
+			}()
+		case <-ctx.Done():
+			return
 		}
-		if len(events) == 0 {
-			time.Sleep(1 * time.Minute)
-			continue
-		}
-		for _, event := range events {
-			go c.execEvent(event, db, ctx)
-		}
-		time.Sleep(1 * time.Minute)
 	}
 }

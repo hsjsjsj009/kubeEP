@@ -25,6 +25,10 @@ type Event interface {
 		[]*UCEntity.Event,
 		error,
 	)
+	GetAllPrescaledEvent(tx *gorm.DB, minus ...time.Duration) (
+		[]*UCEntity.Event,
+		error,
+	)
 }
 
 type event struct {
@@ -231,5 +235,32 @@ func (e *event) GetAllPendingExecutableEvent(tx *gorm.DB, now time.Time) (
 	}
 
 	return eventsData, nil
+}
 
+func (e *event) GetAllPrescaledEvent(tx *gorm.DB, minus ...time.Duration) (
+	[]*UCEntity.Event,
+	error,
+) {
+	events, err := e.eventRepository.FindPrescaledEvent(tx, minus...)
+	if err != nil {
+		return nil, err
+	}
+	var eventsData []*UCEntity.Event
+	for _, event := range events {
+		eventsData = append(
+			eventsData, &UCEntity.Event{
+				CreatedAt: event.CreatedAt,
+				UpdatedAt: event.UpdatedAt,
+				ID:        event.ID.GetUUID(),
+				Status:    event.Status,
+				Name:      event.Name,
+				Message:   event.Message,
+				StartTime: event.StartTime,
+				EndTime:   event.EndTime,
+				Cluster:   UCEntity.ClusterData{ID: event.ClusterID.GetUUID()},
+			},
+		)
+	}
+
+	return eventsData, nil
 }

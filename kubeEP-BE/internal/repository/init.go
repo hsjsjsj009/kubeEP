@@ -19,12 +19,32 @@ type Repositories struct {
 }
 
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(
+	tableList := []interface{}{
 		&model.Datacenter{},
 		&model.Cluster{},
 		&model.Event{},
 		&model.ScheduledHPAConfig{},
+		&model.NodePoolStatus{},
+		&model.HPAStatus{},
+	}
+
+	err := db.AutoMigrate(
+		tableList...,
 	)
+
+	if err != nil {
+		return err
+	}
+
+	for _, table := range tableList {
+		modelObj := table.(model.Model)
+		err = modelObj.AdditionalMigration(db)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func BuildRepositories(resources *config.KubeEPResources) *Repositories {

@@ -18,7 +18,9 @@ type Event interface {
 		[]*model.Event,
 		error,
 	)
-	FindPrescaledEvent(tx *gorm.DB, minus ...time.Duration) ([]*model.Event, error)
+	FindPrescaledEvent(tx *gorm.DB, now time.Time) ([]*model.Event, error)
+	FindWatchedEvent(tx *gorm.DB, now time.Time) ([]*model.Event, error)
+	FinishWatchedEvent(tx *gorm.DB, now time.Time) error
 }
 
 type event struct {
@@ -58,16 +60,26 @@ func (e *event) DeleteEvent(tx *gorm.DB, id uuid.UUID) error {
 	return tx.Delete(&model.Event{}, "id = ?", id).Error
 }
 
-func (e *event) FindPrescaledEvent(tx *gorm.DB, minus ...time.Duration) ([]*model.Event, error) {
+func (e *event) FindPrescaledEvent(tx *gorm.DB, now time.Time) ([]*model.Event, error) {
 	var data []*model.Event
-	now := time.Now()
-	if len(minus) != 0 {
-		now = now.Add(minus[0])
-	}
 	tx = tx.Model(&model.Event{}).Where(
 		"status = ? and end_time > ?", model.EventPrescaled, now.UTC(),
 	).Find(&data)
 	return data, tx.Error
+}
+
+func (e *event) FindWatchedEvent(tx *gorm.DB, now time.Time) ([]*model.Event, error) {
+	var data []*model.Event
+	tx = tx.Model(&model.Event{}).Where(
+		"status = ? and end_time < ?", model.EventWatching, now.UTC(),
+	).Find(&data)
+	return data, tx.Error
+}
+
+func (e *event) FinishWatchedEvent(tx *gorm.DB, now time.Time) error {
+	return tx.Model(&model.Event{}).Where(
+		"status = ? and end_time < ?", model.EventWatching, now.UTC(),
+	).Update("status", model.EventSuccess).Error
 }
 
 func (e *event) FindPendingEventWithIntervalMinute(tx *gorm.DB, minute int, now time.Time) (

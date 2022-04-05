@@ -608,6 +608,55 @@ func (c *cron) watchNodePool(
 	)
 }
 
+func (c *cron) watchHPA(
+	hpaListFunc func(ctx context.Context) ([]UCEntity.SimpleHPAData, error),
+	db *gorm.DB,
+	event *UCEntity.Event,
+	scheduledHPAConfigs []*UCEntity.EventModifiedHPAConfigData,
+	now time.Time,
+	ctx context.Context,
+) {
+	hpaList, err := hpaListFunc(ctx)
+	if err != nil {
+		log.Errorf(
+			"[EventCronJob] Watching event : %s, Watch hpa error : %s",
+			event.Name,
+			err.Error(),
+		)
+		return
+	}
+
+	var selectedHPAStatuses []model.HPAStatus
+	for _, hpa := range hpaList {
+		for _, scheduledHPAConfig := range scheduledHPAConfigs {
+			if hpa.Name == scheduledHPAConfig.Name && scheduledHPAConfig.Namespace == hpa.Namespace {
+				hpaStatus := model.HPAStatus{
+					CreatedAt: now,
+					PodCount:  hpa.CurrentReplicas,
+				}
+				hpaStatus.ScheduledHPAConfigID.SetUUID(scheduledHPAConfig.ID)
+				selectedHPAStatuses = append(selectedHPAStatuses, hpaStatus)
+			}
+		}
+	}
+
+	err = db.Create(&selectedHPAStatuses).Error
+	if err != nil {
+		log.Errorf(
+			"[EventCronJob] Watching event : %s, Watch hpa error : %s",
+			event.Name,
+			err.Error(),
+		)
+		return
+	}
+
+	log.Infof(
+		"[EventCronJob] Watching event : %s, Watching hpa at : %s",
+		event.Name,
+		now,
+	)
+}
+
 func (c *cron) watchEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 	log.Infof("[EventCronJob] Watching event %s", e.Name)
 	e.Status = model.EventWatching
@@ -637,6 +686,21 @@ func (c *cron) watchEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 		}
 	}
 
+	scheduledHPAConfigs, err := c.scheduledHPAConfigUC.ListScheduledHPAConfigByEventID(db, e.ID)
+	if err != nil {
+		c.handleExecEventError(db, e, err.Error())
+		return
+	}
+
+	getAllHPAFunc := func(ctx context.Context) ([]UCEntity.SimpleHPAData, error) {
+		return c.clusterUC.GetAllHPAInCluster(
+			ctx,
+			kubernetesClient,
+			clusterID,
+			clusterData.LatestHPAAPIVersion,
+		)
+	}
+
 	endTime := e.EndTime
 	watcherTicker := time.NewTicker(30 * time.Second)
 	defer watcherTicker.Stop()
@@ -648,10 +712,15 @@ func (c *cron) watchEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 			}
 
 			go c.watchNodePool(kubernetesClient, db, datacenter, e, now, ctx)
+			go c.watchHPA(getAllHPAFunc, db, e, scheduledHPAConfigs, now, ctx)
 		case <-ctx.Done():
 			return
 		}
 	}
+
+}
+
+func (c *cron) finishEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 
 }
 
@@ -681,7 +750,7 @@ func (c *cron) Start() {
 			}()
 
 			go func() {
-				prescaledEvents, err := c.eventUC.GetAllPrescaledEvent(db, -5*time.Minute)
+				prescaledEvents, err := c.eventUC.GetAllPrescaledEvent(db, now.Add(-5*time.Minute))
 				if err != nil {
 					log.Errorf("[EventCronJob] Error getting prescaled events : %s", err.Error())
 				}
@@ -689,6 +758,13 @@ func (c *cron) Start() {
 					for _, prescaledEvent := range prescaledEvents {
 						go c.watchEvent(prescaledEvent, db, ctx)
 					}
+				}
+			}()
+
+			go func() {
+				err := c.eventUC.FinishAllWatchedEvent(db, now)
+				if err != nil {
+					log.Errorf("[EventCronJob] Error update watched events : %s", err.Error())
 				}
 			}()
 		case <-ctx.Done():

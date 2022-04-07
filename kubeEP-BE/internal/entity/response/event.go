@@ -22,4 +22,5 @@ type EventDetailedResponse struct {
 	UpdatedAt          time.Time           `json:"updated_at"`
 	Cluster            Cluster             `json:"cluster"`
 	ModifiedHPAConfigs []ModifiedHPAConfig `json:"modified_hpa_configs"`
+	UpdatedNodePools   []UpdatedNodePool   `json:"updated_node_pools"`
 }

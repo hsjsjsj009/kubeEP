@@ -21,6 +21,8 @@ type Event interface {
 	UpdateEvent(c *fiber.Ctx) error
 	GetDetailedEvent(c *fiber.Ctx) error
 	DeleteEvent(c *fiber.Ctx) error
+	ListNodePoolStatusByUpdatedNodePool(c *fiber.Ctx) error
+	ListHPAStatusByScheduledHPAConfig(c *fiber.Ctx) error
 }
 
 type event struct {
@@ -29,12 +31,14 @@ type event struct {
 	db                   *gorm.DB
 	eventUC              useCase.Event
 	scheduledHPAConfigUC useCase.ScheduledHPAConfig
+	statisticUC          useCase.Statistic
 }
 
 func newEventHandler(
 	validatorInst *validator.Validate,
 	eventUC useCase.Event,
 	scheduledHPAConfigUC useCase.ScheduledHPAConfig,
+	updatedNodePoolUC useCase.Statistic,
 	db *gorm.DB,
 	kubeHandler kubernetesBaseHandler,
 ) Event {
@@ -43,6 +47,7 @@ func newEventHandler(
 		validatorInst:         validatorInst,
 		eventUC:               eventUC,
 		scheduledHPAConfigUC:  scheduledHPAConfigUC,
+		statisticUC:           updatedNodePoolUC,
 		db:                    db,
 	}
 }
@@ -256,10 +261,26 @@ func (e *event) GetDetailedEvent(c *fiber.Ctx) error {
 	for _, hpa := range eventData.EventModifiedHPAConfigData {
 		modifiedHPAConfigRes = append(
 			modifiedHPAConfigRes, response.ModifiedHPAConfig{
+				ID:          hpa.ID,
 				Name:        hpa.Name,
 				Namespace:   hpa.Namespace,
 				MinReplicas: hpa.MinReplicas,
 				MaxReplicas: hpa.MaxReplicas,
+			},
+		)
+	}
+
+	updatedNodePools, err := e.statisticUC.GetAllUpdatedNodePoolByEvent(db, eventID)
+	if err != nil {
+		return e.errorResponse(c, errorConstant.EventNotExist)
+	}
+
+	updatedNodePoolRes := make([]response.UpdatedNodePool, 0)
+	for _, updatedNodePool := range updatedNodePools {
+		updatedNodePoolRes = append(
+			updatedNodePoolRes, response.UpdatedNodePool{
+				ID:           updatedNodePool.ID,
+				NodePoolName: updatedNodePool.NodePoolName,
 			},
 		)
 	}
@@ -279,6 +300,7 @@ func (e *event) GetDetailedEvent(c *fiber.Ctx) error {
 			Datacenter: eventData.Cluster.Datacenter.Datacenter,
 		},
 		ModifiedHPAConfigs: modifiedHPAConfigRes,
+		UpdatedNodePools:   updatedNodePoolRes,
 	}
 
 	return e.successResponse(c, res)
@@ -313,4 +335,69 @@ func (e *event) DeleteEvent(c *fiber.Ctx) error {
 	tx.Commit()
 
 	return e.successResponse(c, constant.ActionDone)
+}
+
+func (e *event) ListNodePoolStatusByUpdatedNodePool(c *fiber.Ctx) error {
+	updatedNodePoolIDStr := c.Params("updated_node_pool_id")
+	updatedNodePoolID, err := uuid.Parse(updatedNodePoolIDStr)
+	if err != nil {
+		return e.errorResponse(c, fmt.Sprintf(errorConstant.ParamInvalid, "updated_node_pool_id"))
+	}
+
+	ctx := c.Context()
+	db := e.db.WithContext(ctx)
+
+	nodePoolStatuses, err := e.statisticUC.GetAllNodePoolStatusByUpdatedNodePoolID(
+		db,
+		updatedNodePoolID,
+	)
+	if err != nil {
+		return e.errorResponse(c, err.Error())
+	}
+
+	var resp []response.NodePoolStatus
+	for _, nodePoolStatus := range nodePoolStatuses {
+		resp = append(
+			resp, response.NodePoolStatus{
+				CreatedAt: nodePoolStatus.CreatedAt,
+				Count:     nodePoolStatus.Count,
+			},
+		)
+	}
+
+	return e.successResponse(c, resp)
+}
+
+func (e *event) ListHPAStatusByScheduledHPAConfig(c *fiber.Ctx) error {
+	scheduledHPAConfigIDStr := c.Params("scheduled_hpa_config_id")
+	scheduledHPAConfigID, err := uuid.Parse(scheduledHPAConfigIDStr)
+	if err != nil {
+		return e.errorResponse(
+			c,
+			fmt.Sprintf(errorConstant.ParamInvalid, "scheduled_hpa_config_id"),
+		)
+	}
+
+	ctx := c.Context()
+	db := e.db.WithContext(ctx)
+
+	hpaStatuses, err := e.statisticUC.GetAllHPAStatusByScheduledHPAConfigID(
+		db,
+		scheduledHPAConfigID,
+	)
+	if err != nil {
+		return e.errorResponse(c, err.Error())
+	}
+
+	var resp []response.HPAStatus
+	for _, nodePoolStatus := range hpaStatuses {
+		resp = append(
+			resp, response.HPAStatus{
+				CreatedAt: nodePoolStatus.CreatedAt,
+				Count:     nodePoolStatus.Count,
+			},
+		)
+	}
+
+	return e.successResponse(c, resp)
 }

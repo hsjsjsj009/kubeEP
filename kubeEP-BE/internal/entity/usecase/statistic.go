@@ -6,8 +6,8 @@ import (
 )
 
 type UpdatedNodePoolData struct {
-	UpdatedNodePoolID uuid.UUID
-	NodePoolName      string
+	ID           uuid.UUID
+	NodePoolName string
 }
 
 type NodePoolStatusData struct {

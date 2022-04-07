@@ -10,3 +10,8 @@ type Cluster struct {
 	Name       string                   `json:"name"`
 	Datacenter model.DatacenterProvider `json:"datacenter"`
 }
+
+type UpdatedNodePool struct {
+	ID           uuid.UUID `json:"id"`
+	NodePoolName string    `json:"node_pool_name"`
+}

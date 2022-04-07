@@ -39,7 +39,7 @@ type cron struct {
 	gcpClusterUC         useCase.GCPCluster
 	gcpDatacenterUC      useCase.GCPDatacenter
 	scheduledHPAConfigUC useCase.ScheduledHPAConfig
-	updatedNodePoolUC    useCase.UpdatedNodePool
+	updatedNodePoolUC    useCase.Statistic
 	tx                   *gorm.DB
 }
 
@@ -49,7 +49,7 @@ func newCron(
 	gcpClusterUC useCase.GCPCluster,
 	gcpDatacenterUC useCase.GCPDatacenter,
 	scheduledHPAConfigUC useCase.ScheduledHPAConfig,
-	updatedNodePoolUC useCase.UpdatedNodePool,
+	updatedNodePoolUC useCase.Statistic,
 	tx *gorm.DB,
 ) Cron {
 	return &cron{
@@ -726,7 +726,7 @@ func (c *cron) watchEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 	}
 	updatedNodePoolMap := map[string]uuid.UUID{}
 	for _, updatedNodePool := range updatedNodePools {
-		updatedNodePoolMap[updatedNodePool.NodePoolName] = updatedNodePool.UpdatedNodePoolID
+		updatedNodePoolMap[updatedNodePool.NodePoolName] = updatedNodePool.ID
 	}
 
 	endTime := e.EndTime

@@ -1,5 +1,7 @@
 package response
 
+import "github.com/google/uuid"
+
 type SimpleHPA struct {
 	Name            string `json:"name"`
 	Namespace       string `json:"namespace"`
@@ -9,8 +11,9 @@ type SimpleHPA struct {
 }
 
 type ModifiedHPAConfig struct {
-	Name        string `json:"name"`
-	Namespace   string `json:"namespace"`
-	MinReplicas *int32 `json:"min_replicas,omitempty"`
-	MaxReplicas int32  `json:"max_replicas"`
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Namespace   string    `json:"namespace"`
+	MinReplicas *int32    `json:"min_replicas,omitempty"`
+	MaxReplicas int32     `json:"max_replicas"`
 }

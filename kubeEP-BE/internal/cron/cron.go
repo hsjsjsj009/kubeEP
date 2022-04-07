@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant"
 	errorConstant "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant/errors"
 	UCEntity "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/usecase"
@@ -38,6 +39,7 @@ type cron struct {
 	gcpClusterUC         useCase.GCPCluster
 	gcpDatacenterUC      useCase.GCPDatacenter
 	scheduledHPAConfigUC useCase.ScheduledHPAConfig
+	updatedNodePoolUC    useCase.UpdatedNodePool
 	tx                   *gorm.DB
 }
 
@@ -47,6 +49,7 @@ func newCron(
 	gcpClusterUC useCase.GCPCluster,
 	gcpDatacenterUC useCase.GCPDatacenter,
 	scheduledHPAConfigUC useCase.ScheduledHPAConfig,
+	updatedNodePoolUC useCase.UpdatedNodePool,
 	tx *gorm.DB,
 ) Cron {
 	return &cron{
@@ -56,6 +59,7 @@ func newCron(
 		gcpClusterUC:         gcpClusterUC,
 		gcpDatacenterUC:      gcpDatacenterUC,
 		scheduledHPAConfigUC: scheduledHPAConfigUC,
+		updatedNodePoolUC:    updatedNodePoolUC,
 	}
 }
 
@@ -231,6 +235,7 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 	nodePoolsMap := map[string]*containerGCP.NodePool{}
 	var nodePoolsList []string
 	errGroup, ctxEg := errgroup.WithContext(ctx)
+	dbEg := db.WithContext(ctxEg).Begin()
 	for _, nodePool := range nodePools {
 		nodePoolsList = append(nodePoolsList, nodePool.Name)
 		nodePoolsRequestedResources[nodePool.Name] = &NodePoolRequestedResourceData{}
@@ -239,6 +244,18 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 		nodePoolsMap[nodePool.Name] = nodePool
 		loadFunc := func(nP *containerGCP.NodePool, rD *NodePoolResourceData) func() error {
 			return func() error {
+				updatedNodePool := &model.UpdatedNodePool{
+					NodePoolName: nP.Name,
+				}
+				updatedNodePool.EventID.SetUUID(e.ID)
+				err := dbEg.Create(updatedNodePool).Error
+				if err != nil {
+					if ctxEg.Err() != nil {
+						return nil
+					}
+					return err
+				}
+
 				nodePoolMaxPods := nP.MaxPodsConstraint.MaxPodsPerNode
 				nodePoolMaxNode := nP.Autoscaling.MaxNodeCount
 				availablePods := nodePoolMaxPods - linuxDaemonSetsPodAmount
@@ -280,6 +297,7 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 		c.handleExecEventError(db, e, err.Error())
 		return
 	}
+	dbEg.Commit()
 
 	// Calculate Required Resource
 	log.Infof("[EventCronJob] Event : %s, Calculate required resources", e.Name)
@@ -561,6 +579,7 @@ func (c *cron) watchNodePool(
 	event *UCEntity.Event,
 	now time.Time,
 	ctx context.Context,
+	updatedNodePoolMap map[string]uuid.UUID,
 ) {
 	nodes, err := client.CoreV1().Nodes().List(ctx, v1Option.ListOptions{})
 	if err != nil {
@@ -587,9 +606,8 @@ func (c *cron) watchNodePool(
 		nodePoolStatus := model.NodePoolStatus{
 			CreatedAt: now,
 			NodeCount: nodeCount,
-			Name:      nodePoolName,
 		}
-		nodePoolStatus.EventID.SetUUID(event.ID)
+		nodePoolStatus.UpdatedNodePoolID.SetUUID(updatedNodePoolMap[nodePoolName])
 		nodePoolStatusObjects = append(nodePoolStatusObjects, nodePoolStatus)
 	}
 
@@ -670,7 +688,7 @@ func (c *cron) watchEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 	clusterID := e.Cluster.ID
 	clusterData, err := c.clusterUC.GetClusterAndDatacenterDataByClusterID(db, clusterID)
 	if err != nil {
-		c.handleExecEventError(db, e, err.Error())
+		c.handleWatchEvent(db, e, err.Error())
 		return
 	}
 	datacenter := clusterData.Datacenter.Datacenter
@@ -681,14 +699,14 @@ func (c *cron) watchEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 	case model.GCP:
 		kubernetesClient, _, err = c.getAllGCPClient(ctx, clusterData)
 		if err != nil {
-			c.handleExecEventError(db, e, err.Error())
+			c.handleWatchEvent(db, e, err.Error())
 			return
 		}
 	}
 
 	scheduledHPAConfigs, err := c.scheduledHPAConfigUC.ListScheduledHPAConfigByEventID(db, e.ID)
 	if err != nil {
-		c.handleExecEventError(db, e, err.Error())
+		c.handleWatchEvent(db, e, err.Error())
 		return
 	}
 
@@ -701,6 +719,16 @@ func (c *cron) watchEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 		)
 	}
 
+	updatedNodePools, err := c.updatedNodePoolUC.GetAllUpdatedNodePoolByEvent(db, e.ID)
+	if err != nil {
+		c.handleWatchEvent(db, e, err.Error())
+		return
+	}
+	updatedNodePoolMap := map[string]uuid.UUID{}
+	for _, updatedNodePool := range updatedNodePools {
+		updatedNodePoolMap[updatedNodePool.NodePoolName] = updatedNodePool.UpdatedNodePoolID
+	}
+
 	endTime := e.EndTime
 	watcherTicker := time.NewTicker(30 * time.Second)
 	defer watcherTicker.Stop()
@@ -711,16 +739,12 @@ func (c *cron) watchEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 				return
 			}
 
-			go c.watchNodePool(kubernetesClient, db, datacenter, e, now, ctx)
+			go c.watchNodePool(kubernetesClient, db, datacenter, e, now, ctx, updatedNodePoolMap)
 			go c.watchHPA(getAllHPAFunc, db, e, scheduledHPAConfigs, now, ctx)
 		case <-ctx.Done():
 			return
 		}
 	}
-
-}
-
-func (c *cron) finishEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 
 }
 

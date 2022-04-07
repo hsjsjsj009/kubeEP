@@ -7,11 +7,10 @@ import (
 )
 
 type NodePoolStatus struct {
-	CreatedAt time.Time         `gorm:"primaryKey;default:now()"`
-	EventID   gormDatatype.UUID `gorm:"primaryKey"`
-	NodeCount int32
-	Name      string
-	Event     Event `gorm:"ForeignKey:EventID;constraint:OnDelete:CASCADE"`
+	CreatedAt         time.Time         `gorm:"primaryKey;default:now()"`
+	UpdatedNodePoolID gormDatatype.UUID `gorm:"primaryKey"`
+	NodeCount         int32
+	UpdatedNodePool   UpdatedNodePool `gorm:"ForeignKey:UpdatedNodePoolID;constraint:OnDelete:CASCADE"`
 }
 
 func (NodePoolStatus) TableName() string {
@@ -32,7 +31,10 @@ func (n *NodePoolStatus) AdditionalMigration(db *gorm.DB) error {
 		return err
 	}
 	if !exist {
-		return db.Exec(`select create_hypertable(?,'created_at', 'event_id', 4)`, tableName).Error
+		return db.Exec(
+			`select create_hypertable(?,'created_at', 'updated_node_pool_id', 4)`,
+			tableName,
+		).Error
 	}
 	return nil
 }

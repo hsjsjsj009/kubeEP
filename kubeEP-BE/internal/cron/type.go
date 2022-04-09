@@ -14,3 +14,11 @@ type NodePoolResourceData struct {
 	AvailableMemory    float64
 	AvailablePods      int64
 }
+
+type DeploymentPodData struct {
+	Name, Namespace     string
+	Replicas            int32
+	AvailableReplicas   int32
+	ReadyReplicas       int32
+	UnavailableReplicas int32
+}

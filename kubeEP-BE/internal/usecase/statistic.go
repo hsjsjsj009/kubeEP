@@ -95,8 +95,11 @@ func (u *statistic) GetAllHPAStatusByScheduledHPAConfigID(
 	for _, d := range data {
 		output = append(
 			output, &UCEntity.HPAStatusData{
-				CreatedAt: d.CreatedAt,
-				Count:     d.PodCount,
+				CreatedAt:           d.CreatedAt,
+				Replicas:            d.Replicas,
+				ReadyReplicas:       d.ReadyReplicas,
+				AvailableReplicas:   d.AvailableReplicas,
+				UnavailableReplicas: d.UnavailableReplicas,
 			},
 		)
 	}

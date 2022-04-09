@@ -393,8 +393,11 @@ func (e *event) ListHPAStatusByScheduledHPAConfig(c *fiber.Ctx) error {
 	for _, nodePoolStatus := range hpaStatuses {
 		resp = append(
 			resp, response.HPAStatus{
-				CreatedAt: nodePoolStatus.CreatedAt,
-				Count:     nodePoolStatus.Count,
+				CreatedAt:           nodePoolStatus.CreatedAt,
+				Replicas:            nodePoolStatus.Replicas,
+				ReadyReplicas:       nodePoolStatus.ReadyReplicas,
+				UnavailableReplicas: nodePoolStatus.UnavailableReplicas,
+				AvailableReplicas:   nodePoolStatus.AvailableReplicas,
 			},
 		)
 	}

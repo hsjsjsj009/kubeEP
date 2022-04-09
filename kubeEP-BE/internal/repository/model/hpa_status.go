@@ -9,7 +9,10 @@ import (
 type HPAStatus struct {
 	CreatedAt            time.Time         `gorm:"primaryKey;default:now()"`
 	ScheduledHPAConfigID gormDatatype.UUID `gorm:"primaryKey"`
-	PodCount             int32
+	Replicas             int32
+	AvailableReplicas    int32
+	ReadyReplicas        int32
+	UnavailableReplicas  int32
 	ScheduledHPAConfig   ScheduledHPAConfig `gorm:"ForeignKey:ScheduledHPAConfigID;constraint:OnDelete:CASCADE"`
 }
 

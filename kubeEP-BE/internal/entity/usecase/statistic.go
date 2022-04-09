@@ -16,6 +16,9 @@ type NodePoolStatusData struct {
 }
 
 type HPAStatusData struct {
-	CreatedAt time.Time
-	Count     int32
+	CreatedAt           time.Time
+	Replicas            int32
+	AvailableReplicas   int32
+	ReadyReplicas       int32
+	UnavailableReplicas int32
 }

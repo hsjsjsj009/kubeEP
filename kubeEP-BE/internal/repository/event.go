@@ -60,10 +60,15 @@ func (e *event) DeleteEvent(tx *gorm.DB, id uuid.UUID) error {
 	return tx.Delete(&model.Event{}, "id = ?", id).Error
 }
 
-func (e *event) FindPrescaledEvent(tx *gorm.DB, now time.Time) ([]*model.Event, error) {
+func (e *event) FindPrescaledEvent(tx *gorm.DB, now time.Time) (
+	[]*model.Event,
+	error,
+) {
 	var data []*model.Event
 	tx = tx.Model(&model.Event{}).Where(
-		"status = ? and end_time > ?", model.EventPrescaled, now.UTC(),
+		"status = ? and start_time > ?",
+		model.EventPrescaled,
+		now.UTC(),
 	).Find(&data)
 	return data, tx.Error
 }

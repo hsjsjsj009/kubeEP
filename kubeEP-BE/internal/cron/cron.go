@@ -627,14 +627,14 @@ func (c *cron) watchNodePool(
 }
 
 func (c *cron) watchHPA(
-	hpaListFunc func(ctx context.Context) ([]UCEntity.SimpleHPAData, error),
+	deploymentDataMapFunc func(ctx context.Context) (map[string]*DeploymentPodData, error),
 	db *gorm.DB,
 	event *UCEntity.Event,
 	scheduledHPAConfigs []*UCEntity.EventModifiedHPAConfigData,
 	now time.Time,
 	ctx context.Context,
 ) {
-	hpaList, err := hpaListFunc(ctx)
+	deploymentDataMap, err := deploymentDataMapFunc(ctx)
 	if err != nil {
 		log.Errorf(
 			"[EventCronJob] Watching event : %s, Watch hpa error : %s",
@@ -645,17 +645,22 @@ func (c *cron) watchHPA(
 	}
 
 	var selectedHPAStatuses []model.HPAStatus
-	for _, hpa := range hpaList {
-		for _, scheduledHPAConfig := range scheduledHPAConfigs {
-			if hpa.Name == scheduledHPAConfig.Name && scheduledHPAConfig.Namespace == hpa.Namespace {
-				hpaStatus := model.HPAStatus{
-					CreatedAt: now,
-					PodCount:  hpa.CurrentReplicas,
-				}
-				hpaStatus.ScheduledHPAConfigID.SetUUID(scheduledHPAConfig.ID)
-				selectedHPAStatuses = append(selectedHPAStatuses, hpaStatus)
-			}
+	for _, scheduledHPAConfig := range scheduledHPAConfigs {
+		key := fmt.Sprintf(
+			constant.NameAndNamespaceKeyFormat,
+			scheduledHPAConfig.Name,
+			scheduledHPAConfig.Namespace,
+		)
+		data := deploymentDataMap[key]
+		hpaStatus := model.HPAStatus{
+			CreatedAt:           now,
+			Replicas:            data.Replicas,
+			AvailableReplicas:   data.AvailableReplicas,
+			UnavailableReplicas: data.UnavailableReplicas,
+			ReadyReplicas:       data.ReadyReplicas,
 		}
+		hpaStatus.ScheduledHPAConfigID.SetUUID(scheduledHPAConfig.ID)
+		selectedHPAStatuses = append(selectedHPAStatuses, hpaStatus)
 	}
 
 	err = db.Create(&selectedHPAStatuses).Error
@@ -710,13 +715,109 @@ func (c *cron) watchEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 		return
 	}
 
-	getAllHPAFunc := func(ctx context.Context) ([]UCEntity.SimpleHPAData, error) {
-		return c.clusterUC.GetAllHPAInCluster(
-			ctx,
-			kubernetesClient,
-			clusterID,
-			clusterData.LatestHPAAPIVersion,
-		)
+	allHPAK8sObject, err := c.clusterUC.GetAllK8sHPAObjectInCluster(
+		ctx,
+		kubernetesClient,
+		clusterID,
+		clusterData.LatestHPAAPIVersion,
+	)
+	if err != nil {
+		c.handleWatchEvent(db, e, err.Error())
+		return
+	}
+
+	mapHPAScaleTargetRef := map[string]interface{}{}
+	for _, hpaK8sObject := range allHPAK8sObject {
+		for _, scheduledHPAConfig := range scheduledHPAConfigs {
+			switch h := hpaK8sObject.(type) {
+			case v1.HorizontalPodAutoscaler:
+				if scheduledHPAConfig.Name == h.Name && scheduledHPAConfig.Namespace == h.Namespace {
+					mapHPAScaleTargetRef[fmt.Sprintf(
+						constant.NameAndNamespaceKeyFormat,
+						h.Name,
+						h.Namespace,
+					)] = h.Spec.ScaleTargetRef
+					break
+				}
+			case v2beta1.HorizontalPodAutoscaler:
+				if scheduledHPAConfig.Name == h.Name && scheduledHPAConfig.Namespace == h.Namespace {
+					mapHPAScaleTargetRef[fmt.Sprintf(
+						constant.NameAndNamespaceKeyFormat,
+						h.Name,
+						h.Namespace,
+					)] = h.Spec.ScaleTargetRef
+					break
+				}
+			case v2beta2.HorizontalPodAutoscaler:
+				if scheduledHPAConfig.Name == h.Name && scheduledHPAConfig.Namespace == h.Namespace {
+					mapHPAScaleTargetRef[fmt.Sprintf(
+						constant.NameAndNamespaceKeyFormat,
+						h.Name,
+						h.Namespace,
+					)] = h.Spec.ScaleTargetRef
+					break
+				}
+			}
+		}
+	}
+
+	getAllDeploymentsFunc := func(ctx context.Context) (map[string]*DeploymentPodData, error) {
+		mapDeploymentsPodData := map[string]*DeploymentPodData{}
+		errGroup, ctxEg := errgroup.WithContext(ctx)
+		for key, val := range mapHPAScaleTargetRef {
+			nameSplit := strings.Split(key, "|")
+			data := &DeploymentPodData{
+				Name:      nameSplit[0],
+				Namespace: nameSplit[1],
+			}
+			mapDeploymentsPodData[key] = data
+			loadFunc := func(
+				namespace string,
+				scaleTargetRef interface{},
+				data *DeploymentPodData,
+			) func() error {
+				return func() error {
+					res, err := c.clusterUC.ResolveScaleTargetRef(
+						ctxEg,
+						kubernetesClient,
+						scaleTargetRef,
+						namespace,
+					)
+					if err != nil {
+						if ctxEg.Err() != nil {
+							return nil
+						}
+
+						return err
+					}
+
+					switch resolveRes := res.(type) {
+					case *v1Apps.Deployment:
+						status := resolveRes.Status
+						data.Replicas = status.Replicas
+						data.UnavailableReplicas = status.UnavailableReplicas
+						data.ReadyReplicas = status.ReadyReplicas
+						data.AvailableReplicas = status.AvailableReplicas
+					}
+
+					return nil
+				}
+			}
+
+			errGroup.Go(
+				loadFunc(
+					nameSplit[1],
+					val,
+					data,
+				),
+			)
+		}
+
+		if err := errGroup.Wait(); err != nil {
+			return nil, err
+		}
+
+		return mapDeploymentsPodData, nil
 	}
 
 	updatedNodePools, err := c.updatedNodePoolUC.GetAllUpdatedNodePoolByEvent(db, e.ID)
@@ -740,7 +841,7 @@ func (c *cron) watchEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 			}
 
 			go c.watchNodePool(kubernetesClient, db, datacenter, e, now, ctx, updatedNodePoolMap)
-			go c.watchHPA(getAllHPAFunc, db, e, scheduledHPAConfigs, now, ctx)
+			go c.watchHPA(getAllDeploymentsFunc, db, e, scheduledHPAConfigs, now, ctx)
 		case <-ctx.Done():
 			return
 		}
@@ -774,7 +875,7 @@ func (c *cron) Start() {
 			}()
 
 			go func() {
-				prescaledEvents, err := c.eventUC.GetAllPrescaledEvent(db, now.Add(-5*time.Minute))
+				prescaledEvents, err := c.eventUC.GetAllPrescaledEvent(db, now.Add(5*time.Minute))
 				if err != nil {
 					log.Errorf("[EventCronJob] Error getting prescaled events : %s", err.Error())
 				}

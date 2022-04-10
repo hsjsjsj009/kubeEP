@@ -16,15 +16,39 @@ type Repositories struct {
 	GCPCluster         GCPCluster
 	K8SDiscovery       K8SDiscovery
 	K8sDeployment      K8sDeployment
+	NodePoolStatus     NodePoolStatus
+	UpdatedNodePool    UpdatedNodePool
+	HPAStatus          HPAStatus
 }
 
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(
+	tableList := []interface{}{
 		&model.Datacenter{},
 		&model.Cluster{},
 		&model.Event{},
 		&model.ScheduledHPAConfig{},
+		&model.NodePoolStatus{},
+		&model.HPAStatus{},
+		&model.UpdatedNodePool{},
+	}
+
+	err := db.AutoMigrate(
+		tableList...,
 	)
+
+	if err != nil {
+		return err
+	}
+
+	for _, table := range tableList {
+		modelObj := table.(model.Model)
+		err = modelObj.AdditionalMigration(db)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func BuildRepositories(resources *config.KubeEPResources) *Repositories {
@@ -38,5 +62,8 @@ func BuildRepositories(resources *config.KubeEPResources) *Repositories {
 		GCPCluster:         newGcpCluster(),
 		K8SDiscovery:       newK8sDiscovery(),
 		K8sDeployment:      newK8sDeployment(),
+		NodePoolStatus:     newNodePoolStatus(),
+		HPAStatus:          newHpaStatus(),
+		UpdatedNodePool:    newUpdatedNodePool(),
 	}
 }

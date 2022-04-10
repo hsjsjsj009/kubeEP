@@ -12,6 +12,7 @@ func BuildCron(useCases *useCase.UseCases, resources *config.KubeEPResources) Cr
 		useCases.GcpCluster,
 		useCases.GcpDatacenter,
 		useCases.ScheduledHPAConfig,
+		useCases.UpdatedNodePool,
 		resources.DB,
 	)
 }

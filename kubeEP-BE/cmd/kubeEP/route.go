@@ -40,6 +40,14 @@ func buildRoute(handlers *handler.Handlers, router fiber.Router) {
 			router.Post("/register", handlers.EventHandler.RegisterEvents)
 			router.Put("/update", handlers.EventHandler.UpdateEvent)
 			router.Get("/list", handlers.EventHandler.ListEventByCluster)
+			router.Get(
+				"/status/node-pool/:updated_node_pool_id",
+				handlers.EventHandler.ListNodePoolStatusByUpdatedNodePool,
+			)
+			router.Get(
+				"/status/hpa/:scheduled_hpa_config_id",
+				handlers.EventHandler.ListHPAStatusByScheduledHPAConfig,
+			)
 			router.Get("/:event_id", handlers.EventHandler.GetDetailedEvent)
 			router.Delete("/:event_id", handlers.EventHandler.DeleteEvent)
 		},

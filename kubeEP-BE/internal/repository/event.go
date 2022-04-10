@@ -18,6 +18,9 @@ type Event interface {
 		[]*model.Event,
 		error,
 	)
+	FindPrescaledEvent(tx *gorm.DB, now time.Time) ([]*model.Event, error)
+	FindWatchedEvent(tx *gorm.DB, now time.Time) ([]*model.Event, error)
+	FinishWatchedEvent(tx *gorm.DB, now time.Time) error
 }
 
 type event struct {
@@ -42,13 +45,6 @@ func (e *event) GetEventByName(tx *gorm.DB, name string) (*model.Event, error) {
 func (e *event) ListEventByClusterID(tx *gorm.DB, id uuid.UUID) ([]*model.Event, error) {
 	var data []*model.Event
 	tx = tx.Model(&model.Event{}).Where("cluster_id = ?", id).Find(&data)
-	//now, _ := time.Parse(time.RFC3339, "2022-03-26T18:49:04.988Z")
-	//tx = tx.Model(&model.Event{}).Where(
-	//	"date_trunc('minutes', start_time::timestamp) - date_trunc('minutes', ?::timestamp) = ? * interval '1 minutes' and status = ?",
-	//	now.UTC(),
-	//	15,
-	//	model.EventPending,
-	//).Find(&data)
 	return data, tx.Error
 }
 
@@ -64,17 +60,44 @@ func (e *event) DeleteEvent(tx *gorm.DB, id uuid.UUID) error {
 	return tx.Delete(&model.Event{}, "id = ?", id).Error
 }
 
+func (e *event) FindPrescaledEvent(tx *gorm.DB, now time.Time) (
+	[]*model.Event,
+	error,
+) {
+	var data []*model.Event
+	tx = tx.Model(&model.Event{}).Where(
+		"status = ? and start_time > ?",
+		model.EventPrescaled,
+		now.UTC(),
+	).Find(&data)
+	return data, tx.Error
+}
+
+func (e *event) FindWatchedEvent(tx *gorm.DB, now time.Time) ([]*model.Event, error) {
+	var data []*model.Event
+	tx = tx.Model(&model.Event{}).Where(
+		"status = ? and end_time < ?", model.EventWatching, now.UTC(),
+	).Find(&data)
+	return data, tx.Error
+}
+
+func (e *event) FinishWatchedEvent(tx *gorm.DB, now time.Time) error {
+	return tx.Model(&model.Event{}).Where(
+		"status = ? and end_time < ?", model.EventWatching, now.UTC(),
+	).Update("status", model.EventSuccess).Error
+}
+
 func (e *event) FindPendingEventWithIntervalMinute(tx *gorm.DB, minute int, now time.Time) (
 	[]*model.Event,
 	error,
 ) {
 	var data []*model.Event
 	tx = tx.Model(&model.Event{}).Where(
-		"start_time - ? < ? * interval '1 minutes'",
+		"start_time - ? < ? * interval '1 minutes' and status = ?",
 		now.UTC(),
 		minute+1,
-	).Where("status = ?", model.EventPending).Find(&data)
-	//tx = tx.Model(&model.Event{}).Where("status = ?", model.EventPending).Find(&data)
+		model.EventPending,
+	).Find(&data)
 	if err := tx.Error; err != nil {
 		return nil, err
 	}

@@ -2,6 +2,7 @@ package response
 
 import (
 	"github.com/google/uuid"
+	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/repository/model"
 	"time"
 )
 
@@ -10,10 +11,11 @@ type EventCreationResponse struct {
 }
 
 type EventSimpleResponse struct {
-	ID        uuid.UUID `json:"id"`
-	Name      string    `json:"name"`
-	StartTime time.Time `json:"start_time"`
-	EndTime   time.Time `json:"end_time"`
+	ID        uuid.UUID         `json:"id"`
+	Name      string            `json:"name"`
+	StartTime time.Time         `json:"start_time"`
+	EndTime   time.Time         `json:"end_time"`
+	Status    model.EventStatus `json:"status"`
 }
 
 type EventDetailedResponse struct {

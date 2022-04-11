@@ -6,6 +6,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/config"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/handler"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/repository"
@@ -14,12 +15,24 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"strings"
 	"time"
 )
 
 func runServer(configData *config.Config) {
 	ctx := context.Background()
 	app := fiber.New()
+
+	// CORS
+
+	app.Use(
+		cors.New(
+			cors.Config{
+				AllowOrigins: strings.Join(configData.Cors.AllowOrigins, ","),
+				AllowHeaders: strings.Join(configData.Cors.AllowHeaders, ","),
+			},
+		),
+	)
 
 	// Bootstrap DB
 	newDBLogger := logger.New(

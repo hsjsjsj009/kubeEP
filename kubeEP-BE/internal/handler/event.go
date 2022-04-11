@@ -169,6 +169,7 @@ func (e *event) ListEventByCluster(c *fiber.Ctx) error {
 				Name:      event.Name,
 				StartTime: event.StartTime,
 				EndTime:   event.EndTime,
+				Status:    event.Status,
 			},
 		)
 	}
@@ -291,6 +292,7 @@ func (e *event) GetDetailedEvent(c *fiber.Ctx) error {
 			Name:      eventData.Name,
 			StartTime: eventData.StartTime,
 			EndTime:   eventData.EndTime,
+			Status:    eventData.Status,
 		},
 		CreatedAt: eventData.CreatedAt,
 		UpdatedAt: eventData.UpdatedAt,

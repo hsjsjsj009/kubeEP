@@ -1,8 +1,6 @@
 <script context="module" lang="ts">
     import {GetEventDetailByID} from "$lib/api/event";
     import { validate } from "uuid";
-    import NodePoolChart from "$lib/components/chart/node-pool-chart.svelte";
-    import HPAChart from "$lib/components/chart/hpa-chart.svelte";
 
     /** @type {import('./[id]').Load} */
     // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
@@ -38,6 +36,7 @@
 </script>
 
 <script lang="ts">
+    import {browser} from "$app/env"
     import type {EventDetailedResponse} from "$lib/api/type";
 
     export let isErr = false;
@@ -67,19 +66,31 @@
     <h1>Start Time : {startTime.toLocaleString()}</h1>
     <h1>End Time : {endTime.toLocaleString()}</h1>
     <h1>Status : {eventData.status}</h1>
-    {#if eventData.status === "SUCCESS"}
+    {#if eventData.status === "SUCCESS" && browser}
         <div class="mt-2">
             <h2 class="font-bold">Monitoring</h2>
-            <div class="flex mt-1">
-                <div class="flex-1">
-                    {#each eventData.updated_node_pools as updatedNodePool}
-                        <NodePoolChart id={updatedNodePool.id} name={updatedNodePool.node_pool_name} />
-                    {/each}
+            <div class="flex mt-1 mb-3">
+                <div class="flex-1 mb-3 mx-3 overflow-y-auto max-h-[75vh]">
+                    {#await import("$lib/components/chart/node-pool-chart.svelte")}
+                        <h3>Loading Component...</h3>
+                    {:then c}
+                        {#each eventData.updated_node_pools as updatedNodePool}
+                            <svelte:component this={c.default} id={updatedNodePool.id} name={updatedNodePool.node_pool_name} />
+                        {/each}
+                    {:catch e}
+                        <h3>Error Loading Component : {e}</h3>
+                    {/await}
                 </div>
-                <div class="flex-1">
-                    {#each eventData.modified_hpa_configs as modifiedHPAConfig}
-                        <HPAChart name={modifiedHPAConfig.name} namespace={modifiedHPAConfig.namespace} id={modifiedHPAConfig.id} />
-                    {/each}
+                <div class="flex-1 mb-3 mx-3 overflow-y-auto max-h-[75vh]">
+                    {#await import("$lib/components/chart/hpa-chart.svelte")}
+                        <h3>Loading Component...</h3>
+                    {:then c}
+                        {#each eventData.modified_hpa_configs as modifiedHPAConfig}
+                            <svelte:component this={c.default} name={modifiedHPAConfig.name} namespace={modifiedHPAConfig.namespace} id={modifiedHPAConfig.id} />
+                        {/each}
+                    {:catch e}
+                        <h3>Error Loading Component : {e}</h3>
+                    {/await}
                 </div>
             </div>
         </div>

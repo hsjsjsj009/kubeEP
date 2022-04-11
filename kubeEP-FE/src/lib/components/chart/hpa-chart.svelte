@@ -6,8 +6,6 @@
     import {onMount} from "svelte";
     import moment from "moment";
 
-    fcRoot(FusionCharts, Timeseries);
-
     export let id;
     export let name;
     export let namespace;
@@ -15,15 +13,23 @@
     let data = [];
     let error = null;
     let loaded = false;
+    let maximumPodsStatistic = {};
 
     onMount(async () => {
+        fcRoot(FusionCharts, Timeseries);
         try {
-            data = await GetEventHPAStatistics(id)
+            const response = await GetEventHPAStatistics(id)
+            maximumPodsStatistic = {
+                replicas: response.reduce((prev,current) => prev < current.replicas ? current.replicas : prev, 0),
+                readyReplicas: response.reduce((prev,current) => prev < current.replicas ? current.ready_replicas : prev, 0),
+                availableReplicas: response.reduce((prev,current) => prev < current.replicas ? current.available_replicas : prev, 0),
+                unavailableReplicas: response.reduce((prev,current) => prev < current.replicas ? current.unavailable_replicas : prev, 0)
+            }
             data = [
-                ...data.map(o => [moment(o.created_at).format("YYYY-MM-DD hh:mm:ss A"),"Replicas", o.replicas]),
-                ...data.map(o => [moment(o.created_at).format("YYYY-MM-DD hh:mm:ss A"),"Ready Replicas", o.ready_replicas]),
-                ...data.map(o => [moment(o.created_at).format("YYYY-MM-DD hh:mm:ss A"),"Available Replicas", o.available_replicas]),
-                ...data.map(o => [moment(o.created_at).format("YYYY-MM-DD hh:mm:ss A"),"Unavailable Replicas", o.unavailable_replicas])
+                ...response.map(o => [moment(o.created_at).format("YYYY-MM-DD hh:mm:ss A"),"Replicas", o.replicas]),
+                ...response.map(o => [moment(o.created_at).format("YYYY-MM-DD hh:mm:ss A"),"Ready Replicas", o.ready_replicas]),
+                ...response.map(o => [moment(o.created_at).format("YYYY-MM-DD hh:mm:ss A"),"Available Replicas", o.available_replicas]),
+                ...response.map(o => [moment(o.created_at).format("YYYY-MM-DD hh:mm:ss A"),"Unavailable Replicas", o.unavailable_replicas])
             ]
             loaded = true
         } catch (e) {
@@ -82,7 +88,15 @@
 {/if}
 
 {#if data.length > 0 && !error && loaded}
-    <SvelteFusioncharts {...getChartConfig(data, schema)} />
+    <div class="mb-2">
+        <SvelteFusioncharts {...getChartConfig(data, schema)} />
+        <div class="text-left">
+            <h3>Maximum Replicas : {maximumPodsStatistic.replicas}</h3>
+            <h3>Maximum Ready Replicas : {maximumPodsStatistic.readyReplicas}</h3>
+            <h3>Maximum Available Replicas : {maximumPodsStatistic.availableReplicas}</h3>
+            <h3>Maximum Unavailable Replicas : {maximumPodsStatistic.unavailableReplicas}</h3>
+        </div>
+    </div>
 {/if}
 
 {#if loaded && error}

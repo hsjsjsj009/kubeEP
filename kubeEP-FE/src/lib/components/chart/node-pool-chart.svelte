@@ -6,19 +6,20 @@
     import {onMount} from "svelte";
     import moment from "moment";
 
-    fcRoot(FusionCharts, Timeseries);
-
     export let id;
     export let name;
 
     let data = [];
     let error = null;
     let loaded = false;
+    let maximumNodes = 0;
 
     onMount(async () => {
+        fcRoot(FusionCharts, Timeseries);
         try {
-            data = await GetEventNodePoolStatistics(id)
-            data = data.map(o => [moment(o.created_at).format("YYYY-MM-DD hh:mm:ss A"), o.count])
+            const response = await GetEventNodePoolStatistics(id)
+            data = response.map(o => [moment(o.created_at).format("YYYY-MM-DD hh:mm:ss A"), o.count])
+            maximumNodes = data.reduce((prev,current) => prev < current[1] ? current[1] : prev, maximumNodes)
             loaded = true
         } catch (e) {
             error = e;
@@ -71,7 +72,12 @@
 {/if}
 
 {#if data.length > 0 && !error && loaded}
-    <SvelteFusioncharts {...getChartConfig(data, schema)} />
+    <div class="mb-2">
+        <SvelteFusioncharts {...getChartConfig(data, schema)} />
+        <div class="text-left">
+            <h3>Maximum Nodes : {maximumNodes}</h3>
+        </div>
+    </div>
 {/if}
 
 {#if loaded && error}

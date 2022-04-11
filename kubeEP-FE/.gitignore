@@ -3,8 +3,8 @@ node_modules
 /build
 /.svelte-kit
 /package
-.env.development
-.env.*
+.env
+.env
 !.env.example
 
 # Created by https://www.toptal.com/developers/gitignore/api/webstorm+all,visualstudiocode

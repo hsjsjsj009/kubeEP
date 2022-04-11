@@ -7,6 +7,12 @@ import (
 
 type Config struct {
 	Database databaseConfig `yaml:"database"`
+	Cors     corsConfig     `yaml:"cors"`
+}
+
+type corsConfig struct {
+	AllowOrigins []string `yaml:"allow-origins"`
+	AllowHeaders []string `yaml:"allow-headers"`
 }
 
 type databaseConfig struct {

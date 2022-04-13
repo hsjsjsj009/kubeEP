@@ -25,7 +25,7 @@ type Event interface {
 		[]*UCEntity.Event,
 		error,
 	)
-	GetAllPrescaledEvent(tx *gorm.DB, now time.Time) (
+	GetAllPrescaledEvent10MinBeforeStart(tx *gorm.DB, now time.Time) (
 		[]*UCEntity.Event,
 		error,
 	)
@@ -214,7 +214,12 @@ func (e *event) GetAllPendingExecutableEvent(tx *gorm.DB, now time.Time) (
 	[]*UCEntity.Event,
 	error,
 ) {
-	events, err := e.eventRepository.FindPendingEventWithIntervalMinute(tx, 15, now)
+	events, err := e.eventRepository.FindEventByStatusWithStarTimeBeforeMinute(
+		tx,
+		model.EventPending,
+		20,
+		now,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -238,11 +243,16 @@ func (e *event) GetAllPendingExecutableEvent(tx *gorm.DB, now time.Time) (
 	return eventsData, nil
 }
 
-func (e *event) GetAllPrescaledEvent(tx *gorm.DB, now time.Time) (
+func (e *event) GetAllPrescaledEvent10MinBeforeStart(tx *gorm.DB, now time.Time) (
 	[]*UCEntity.Event,
 	error,
 ) {
-	events, err := e.eventRepository.FindPrescaledEvent(tx, now)
+	events, err := e.eventRepository.FindEventByStatusWithStarTimeBeforeMinute(
+		tx,
+		model.EventPrescaled,
+		10,
+		now,
+	)
 	if err != nil {
 		return nil, err
 	}

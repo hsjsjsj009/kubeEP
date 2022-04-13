@@ -233,6 +233,7 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 	nodePoolsMaxResources := map[string]*NodePoolResourceData{}
 	nodePoolsRequestedResources := map[string]*NodePoolRequestedResourceData{}
 	nodePoolsMap := map[string]*containerGCP.NodePool{}
+	var updatedNodePools []*model.UpdatedNodePool
 	var nodePoolsList []string
 	errGroup, ctxEg := errgroup.WithContext(ctx)
 	dbEg := db.WithContext(ctxEg).Begin()
@@ -242,20 +243,16 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 		resourceData := &NodePoolResourceData{}
 		nodePoolsMaxResources[nodePool.Name] = resourceData
 		nodePoolsMap[nodePool.Name] = nodePool
+
+		updatedNodePool := &model.UpdatedNodePool{
+			NodePoolName: nodePool.Name,
+		}
+		updatedNodePool.EventID.SetUUID(e.ID)
+
+		updatedNodePools = append(updatedNodePools, updatedNodePool)
+
 		loadFunc := func(nP *containerGCP.NodePool, rD *NodePoolResourceData) func() error {
 			return func() error {
-				updatedNodePool := &model.UpdatedNodePool{
-					NodePoolName: nP.Name,
-				}
-				updatedNodePool.EventID.SetUUID(e.ID)
-				err := dbEg.Create(updatedNodePool).Error
-				if err != nil {
-					if ctxEg.Err() != nil {
-						return nil
-					}
-					return err
-				}
-
 				nodePoolMaxPods := nP.MaxPodsConstraint.MaxPodsPerNode
 				nodePoolMaxNode := nP.Autoscaling.MaxNodeCount
 				availablePods := nodePoolMaxPods - linuxDaemonSetsPodAmount
@@ -429,7 +426,7 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 	)
 	errGroup, ctxEg = errgroup.WithContext(ctx)
 	var updateNodePoolLock sync.Mutex
-	for _, nodePoolName := range nodePoolsList {
+	for idx, nodePoolName := range nodePoolsList {
 		requestedResourceData := nodePoolsRequestedResources[nodePoolName]
 		maxResourceData := nodePoolsMaxResources[nodePoolName]
 		nodePool := nodePoolsMap[nodePoolName]
@@ -438,6 +435,7 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 				reqResources *NodePoolRequestedResourceData,
 				maxResources *NodePoolResourceData,
 				nodePoolObj *containerGCP.NodePool,
+				updatedNodePool *model.UpdatedNodePool,
 			) func() error {
 				return func() error {
 					unfulfilledCPU := float64(0)
@@ -473,6 +471,8 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 					if maxNeededNode > 0 {
 						newMaxNode += maxNeededNode + 5
 					}
+
+					updatedNodePool.MaxNode = newMaxNode
 
 					updateNodePoolLock.Lock()
 					defer updateNodePoolLock.Unlock()
@@ -526,11 +526,16 @@ func (c *cron) execEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 						time.Sleep(100 * time.Millisecond)
 					}
 				}
-			}(requestedResourceData, maxResourceData, nodePool),
+			}(requestedResourceData, maxResourceData, nodePool, updatedNodePools[idx]),
 		)
 	}
 
 	if err := errGroup.Wait(); err != nil {
+		c.handleExecEventError(db, e, err.Error())
+		return
+	}
+
+	if err := db.Create(&updatedNodePools).Error; err != nil {
 		c.handleExecEventError(db, e, err.Error())
 		return
 	}
@@ -875,7 +880,7 @@ func (c *cron) Start() {
 			}()
 
 			go func() {
-				prescaledEvents, err := c.eventUC.GetAllPrescaledEvent(db, now.Add(5*time.Minute))
+				prescaledEvents, err := c.eventUC.GetAllPrescaledEvent10MinBeforeStart(db, now)
 				if err != nil {
 					log.Errorf("[EventCronJob] Error getting prescaled events : %s", err.Error())
 				}

@@ -8,6 +8,7 @@ import (
 type UpdatedNodePoolData struct {
 	ID           uuid.UUID
 	NodePoolName string
+	MaxNode      int32
 }
 
 type NodePoolStatusData struct {

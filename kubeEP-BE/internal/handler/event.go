@@ -282,6 +282,7 @@ func (e *event) GetDetailedEvent(c *fiber.Ctx) error {
 			updatedNodePoolRes, response.UpdatedNodePool{
 				ID:           updatedNodePool.ID,
 				NodePoolName: updatedNodePool.NodePoolName,
+				MaxNode:      updatedNodePool.MaxNode,
 			},
 		)
 	}

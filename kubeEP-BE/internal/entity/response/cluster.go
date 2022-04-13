@@ -14,4 +14,5 @@ type Cluster struct {
 type UpdatedNodePool struct {
 	ID           uuid.UUID `json:"id"`
 	NodePoolName string    `json:"node_pool_name"`
+	MaxNode      int32     `json:"max_node"`
 }

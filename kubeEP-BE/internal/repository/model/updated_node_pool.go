@@ -5,6 +5,7 @@ import gormDatatype "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/pkg/gorm/da
 type UpdatedNodePool struct {
 	BaseModel
 	NodePoolName string
+	MaxNode      int32
 	EventID      gormDatatype.UUID
 	Event        Event `gorm:"ForeignKey:EventID;constraint:OnDelete:CASCADE"`
 }

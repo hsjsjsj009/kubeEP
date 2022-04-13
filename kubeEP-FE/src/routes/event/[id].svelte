@@ -38,7 +38,7 @@
 	import { browser } from '$app/env';
 	import type { EventDetailedResponse } from '$lib/api/type';
 
-	export let isErr = false;
+	export let isErr: boolean = false;
 	export let eventData: EventDetailedResponse;
 	export let errData = null;
 
@@ -93,6 +93,8 @@
 									this={c.default}
 									name={modifiedHPAConfig.name}
 									namespace={modifiedHPAConfig.namespace}
+									minPods={modifiedHPAConfig.min_replicas}
+									maxPods={modifiedHPAConfig.max_replicas}
 									id={modifiedHPAConfig.id}
 								/>
 							{/each}

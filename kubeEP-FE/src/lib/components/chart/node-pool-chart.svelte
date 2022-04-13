@@ -8,6 +8,8 @@
 
 	export let id;
 	export let name;
+	export let minNode = 0;
+	export let maxNode = 0;
 
 	let data = [];
 	let error = null;
@@ -54,6 +56,9 @@
 				data: fusionTable,
 				caption: {
 					text: `Node Pool ${name}`
+				},
+				subcaption: {
+					text: `Min Node ${minNode} - Max Node ${maxNode}`
 				},
 				yAxis: [
 					{

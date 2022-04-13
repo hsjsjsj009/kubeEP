@@ -6,9 +6,13 @@
 	import { onMount } from 'svelte';
 	import moment from 'moment';
 
+	fcRoot(FusionCharts, Timeseries);
+
 	export let id;
 	export let name;
 	export let namespace;
+	export let minPods = 0;
+	export let maxPods = 0;
 
 	let data = [];
 	let error = null;
@@ -16,7 +20,6 @@
 	let maximumPodsStatistic = {};
 
 	onMount(async () => {
-		fcRoot(FusionCharts, Timeseries);
 		try {
 			const response = await GetEventHPAStatistics(id);
 			maximumPodsStatistic = {
@@ -94,6 +97,9 @@
 				data: fusionTable,
 				caption: {
 					text: `HPA ${name} - Namespace ${namespace} `
+				},
+				subcaption: {
+					text: `Min Pods ${minPods} - Max Pods ${maxPods}`
 				},
 				series: 'Type',
 				yAxis: [

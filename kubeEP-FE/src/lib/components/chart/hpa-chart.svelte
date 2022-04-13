@@ -99,7 +99,7 @@
 					text: `HPA ${name} - Namespace ${namespace} `
 				},
 				subcaption: {
-					text: `Min Pods ${minPods} - Max Pods ${maxPods}`
+					text: `Updated Min Pods ${minPods} - Updated Max Pods ${maxPods}`
 				},
 				series: 'Type',
 				yAxis: [
@@ -124,10 +124,10 @@
 	<div class="mb-2">
 		<SvelteFusioncharts {...getChartConfig(data, schema)} />
 		<div class="text-left">
-			<h3>Maximum Replicas : {maximumPodsStatistic.replicas}</h3>
-			<h3>Maximum Ready Replicas : {maximumPodsStatistic.readyReplicas}</h3>
-			<h3>Maximum Available Replicas : {maximumPodsStatistic.availableReplicas}</h3>
-			<h3>Maximum Unavailable Replicas : {maximumPodsStatistic.unavailableReplicas}</h3>
+			<h3>Maximum Spawned Replicas : {maximumPodsStatistic.replicas}</h3>
+			<h3>Maximum Spawned Ready Replicas : {maximumPodsStatistic.readyReplicas}</h3>
+			<h3>Maximum Spawned Available Replicas : {maximumPodsStatistic.availableReplicas}</h3>
+			<h3>Maximum Spawned Unavailable Replicas : {maximumPodsStatistic.unavailableReplicas}</h3>
 		</div>
 	</div>
 {/if}

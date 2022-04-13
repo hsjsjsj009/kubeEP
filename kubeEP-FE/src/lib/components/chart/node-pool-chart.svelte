@@ -8,7 +8,6 @@
 
 	export let id;
 	export let name;
-	export let minNode = 0;
 	export let maxNode = 0;
 
 	let data = [];
@@ -58,7 +57,7 @@
 					text: `Node Pool ${name}`
 				},
 				subcaption: {
-					text: `Min Node ${minNode} - Max Node ${maxNode}`
+					text: `Updated Max Node ${maxNode}`
 				},
 				yAxis: [
 					{
@@ -82,7 +81,7 @@
 	<div class="mb-2">
 		<SvelteFusioncharts {...getChartConfig(data, schema)} />
 		<div class="text-left">
-			<h3>Maximum Nodes : {maximumNodes}</h3>
+			<h3>Maximum Spawned Nodes : {maximumNodes}</h3>
 		</div>
 	</div>
 {/if}

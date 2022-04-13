@@ -38,7 +38,7 @@
 	import { browser } from '$app/env';
 	import type { EventDetailedResponse } from '$lib/api/type';
 
-	export let isErr: boolean = false;
+	export let isErr = false;
 	export let eventData: EventDetailedResponse;
 	export let errData = null;
 
@@ -78,6 +78,7 @@
 									this={c.default}
 									id={updatedNodePool.id}
 									name={updatedNodePool.node_pool_name}
+									maxNode={updatedNodePool.max_node}
 								/>
 							{/each}
 						{:catch e}

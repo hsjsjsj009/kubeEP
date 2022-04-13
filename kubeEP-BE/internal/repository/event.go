@@ -14,11 +14,15 @@ type Event interface {
 	InsertEvent(tx *gorm.DB, data *model.Event) error
 	SaveEvent(tx *gorm.DB, data *model.Event) error
 	DeleteEvent(tx *gorm.DB, id uuid.UUID) error
-	FindPendingEventWithIntervalMinute(tx *gorm.DB, minute int, now time.Time) (
+	FindEventByStatusWithStarTimeBeforeMinute(
+		tx *gorm.DB,
+		status model.EventStatus,
+		minute int,
+		now time.Time,
+	) (
 		[]*model.Event,
 		error,
 	)
-	FindPrescaledEvent(tx *gorm.DB, now time.Time) ([]*model.Event, error)
 	FindWatchedEvent(tx *gorm.DB, now time.Time) ([]*model.Event, error)
 	FinishWatchedEvent(tx *gorm.DB, now time.Time) error
 }
@@ -60,19 +64,6 @@ func (e *event) DeleteEvent(tx *gorm.DB, id uuid.UUID) error {
 	return tx.Delete(&model.Event{}, "id = ?", id).Error
 }
 
-func (e *event) FindPrescaledEvent(tx *gorm.DB, now time.Time) (
-	[]*model.Event,
-	error,
-) {
-	var data []*model.Event
-	tx = tx.Model(&model.Event{}).Where(
-		"status = ? and start_time > ?",
-		model.EventPrescaled,
-		now.UTC(),
-	).Find(&data)
-	return data, tx.Error
-}
-
 func (e *event) FindWatchedEvent(tx *gorm.DB, now time.Time) ([]*model.Event, error) {
 	var data []*model.Event
 	tx = tx.Model(&model.Event{}).Where(
@@ -87,7 +78,12 @@ func (e *event) FinishWatchedEvent(tx *gorm.DB, now time.Time) error {
 	).Update("status", model.EventSuccess).Error
 }
 
-func (e *event) FindPendingEventWithIntervalMinute(tx *gorm.DB, minute int, now time.Time) (
+func (e *event) FindEventByStatusWithStarTimeBeforeMinute(
+	tx *gorm.DB,
+	status model.EventStatus,
+	minute int,
+	now time.Time,
+) (
 	[]*model.Event,
 	error,
 ) {
@@ -96,7 +92,7 @@ func (e *event) FindPendingEventWithIntervalMinute(tx *gorm.DB, minute int, now 
 		"start_time - ? < ? * interval '1 minutes' and status = ?",
 		now.UTC(),
 		minute+1,
-		model.EventPending,
+		status,
 	).Find(&data)
 	if err := tx.Error; err != nil {
 		return nil, err

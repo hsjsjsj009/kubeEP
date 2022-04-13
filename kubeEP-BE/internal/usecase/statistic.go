@@ -54,6 +54,7 @@ func (u *statistic) GetAllUpdatedNodePoolByEvent(
 			output, &UCEntity.UpdatedNodePoolData{
 				ID:           d.ID.GetUUID(),
 				NodePoolName: d.NodePoolName,
+				MaxNode:      d.MaxNode,
 			},
 		)
 	}

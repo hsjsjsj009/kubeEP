@@ -10,13 +10,14 @@
 	export let name;
 	export let maxNode = 0;
 
+	fcRoot(FusionCharts, Timeseries);
+
 	let data = [];
 	let error = null;
 	let loaded = false;
 	let maximumNodes = 0;
 
 	onMount(async () => {
-		fcRoot(FusionCharts, Timeseries);
 		try {
 			const response = await GetEventNodePoolStatistics(id);
 			data = response.map((o) => [moment(o.created_at).format('YYYY-MM-DD hh:mm:ss A'), o.count]);

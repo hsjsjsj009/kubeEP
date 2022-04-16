@@ -26,6 +26,7 @@ enum EventStatus {
 export interface UpdatedNodePool {
 	id: string;
 	node_pool_name: string;
+	max_node: number
 }
 
 export interface EventSimpleResponse {

@@ -78,6 +78,7 @@
 									this={c.default}
 									id={updatedNodePool.id}
 									name={updatedNodePool.node_pool_name}
+									maxNode={updatedNodePool.max_node}
 								/>
 							{/each}
 						{:catch e}
@@ -93,6 +94,8 @@
 									this={c.default}
 									name={modifiedHPAConfig.name}
 									namespace={modifiedHPAConfig.namespace}
+									minPods={modifiedHPAConfig.min_replicas}
+									maxPods={modifiedHPAConfig.max_replicas}
 									id={modifiedHPAConfig.id}
 								/>
 							{/each}

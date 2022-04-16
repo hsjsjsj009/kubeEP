@@ -8,6 +8,9 @@
 
 	export let id;
 	export let name;
+	export let maxNode = 0;
+
+	fcRoot(FusionCharts, Timeseries);
 
 	let data = [];
 	let error = null;
@@ -15,7 +18,6 @@
 	let maximumNodes = 0;
 
 	onMount(async () => {
-		fcRoot(FusionCharts, Timeseries);
 		try {
 			const response = await GetEventNodePoolStatistics(id);
 			data = response.map((o) => [moment(o.created_at).format('YYYY-MM-DD hh:mm:ss A'), o.count]);
@@ -55,6 +57,9 @@
 				caption: {
 					text: `Node Pool ${name}`
 				},
+				subcaption: {
+					text: `Updated Max Node ${maxNode}`
+				},
 				yAxis: [
 					{
 						plot: {
@@ -77,7 +82,7 @@
 	<div class="mb-2">
 		<SvelteFusioncharts {...getChartConfig(data, schema)} />
 		<div class="text-left">
-			<h3>Maximum Nodes : {maximumNodes}</h3>
+			<h3>Maximum Spawned Nodes : {maximumNodes}</h3>
 		</div>
 	</div>
 {/if}

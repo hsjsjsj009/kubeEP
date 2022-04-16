@@ -6,9 +6,13 @@
 	import { onMount } from 'svelte';
 	import moment from 'moment';
 
+	fcRoot(FusionCharts, Timeseries);
+
 	export let id;
 	export let name;
 	export let namespace;
+	export let minPods = 0;
+	export let maxPods = 0;
 
 	let data = [];
 	let error = null;
@@ -16,7 +20,6 @@
 	let maximumPodsStatistic = {};
 
 	onMount(async () => {
-		fcRoot(FusionCharts, Timeseries);
 		try {
 			const response = await GetEventHPAStatistics(id);
 			maximumPodsStatistic = {
@@ -95,6 +98,9 @@
 				caption: {
 					text: `HPA ${name} - Namespace ${namespace} `
 				},
+				subcaption: {
+					text: `Updated Min Pods ${minPods} - Updated Max Pods ${maxPods}`
+				},
 				series: 'Type',
 				yAxis: [
 					{
@@ -118,10 +124,10 @@
 	<div class="mb-2">
 		<SvelteFusioncharts {...getChartConfig(data, schema)} />
 		<div class="text-left">
-			<h3>Maximum Replicas : {maximumPodsStatistic.replicas}</h3>
-			<h3>Maximum Ready Replicas : {maximumPodsStatistic.readyReplicas}</h3>
-			<h3>Maximum Available Replicas : {maximumPodsStatistic.availableReplicas}</h3>
-			<h3>Maximum Unavailable Replicas : {maximumPodsStatistic.unavailableReplicas}</h3>
+			<h3>Maximum Spawned Replicas : {maximumPodsStatistic.replicas}</h3>
+			<h3>Maximum Spawned Ready Replicas : {maximumPodsStatistic.readyReplicas}</h3>
+			<h3>Maximum Spawned Available Replicas : {maximumPodsStatistic.availableReplicas}</h3>
+			<h3>Maximum Spawned Unavailable Replicas : {maximumPodsStatistic.unavailableReplicas}</h3>
 		</div>
 	</div>
 {/if}

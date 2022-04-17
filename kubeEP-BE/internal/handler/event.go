@@ -78,7 +78,7 @@ func (e *event) RegisterEvents(c *fiber.Ctx) error {
 		return e.errorResponse(c, errorConstant.EventExist)
 	}
 
-	kubernetesClient, latestHPAAPIVersion, err := e.getClusterKubernetesClient(
+	kubernetesClient, clusterData, err := e.getClusterKubernetesClient(
 		ctx,
 		db,
 		*reqData.ClusterID,
@@ -91,7 +91,7 @@ func (e *event) RegisterEvents(c *fiber.Ctx) error {
 		ctx,
 		kubernetesClient,
 		*reqData.ClusterID,
-		latestHPAAPIVersion,
+		clusterData.LatestHPAAPIVersion,
 	)
 	if err != nil {
 		return e.errorResponse(c, err.Error())

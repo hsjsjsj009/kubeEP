@@ -85,3 +85,18 @@ export interface GCPRegisterClustersRequest {
 	datacenter_id: string
 	is_datacenter_temporary: boolean
 }
+
+export interface SimpleHPA {
+	name: string
+	namespace: string
+	min_replicas: number | null
+	max_replicas: number
+	current_replicas: number
+
+}
+
+export interface ClusterDetailResponse {
+	cluster: Cluster
+	hpa_list: SimpleHPA[]
+}
+

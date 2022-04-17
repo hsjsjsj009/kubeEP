@@ -1,21 +1,21 @@
 <script context="module" lang="ts">
 	import { GetEventDetailByID } from '$lib/api/event';
-	import { validate } from 'uuid';
 
-	/** @type {import('./[id]').Load} */
+	/** @type {import('./[eventID].svelte').Load} */
 	export async function load({ params }) {
-		const eventID = params.id;
-		if (!validate(eventID)) {
-			return {
-				props: {
-					isErr: true,
-					errData: 'event id invalid'
-				}
-			};
-		}
+		const eventID = params.eventID;
+		const clusterID = params.id
 
 		try {
 			const data = await GetEventDetailByID(eventID);
+			if (data.cluster.id !== clusterID) {
+				return {
+					props: {
+						isErr: false,
+						errData: 'cluster id mismatch'
+					}
+				}
+			}
 			return {
 				props: {
 					isErr: false,

@@ -3,7 +3,6 @@
 	import { validate } from 'uuid';
 
 	/** @type {import('./[id]').Load} */
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	export async function load({ params }) {
 		const eventID = params.id;
 		if (!validate(eventID)) {
@@ -60,18 +59,18 @@
 	</div>
 {:else}
 	<div class="container mx-auto text-center">
-		<h1>Event</h1>
-		<h1>Name : {eventData.name}</h1>
-		<h1>Start Time : {startTime.toLocaleString()}</h1>
-		<h1>End Time : {endTime.toLocaleString()}</h1>
-		<h1>Status : {eventData.status}</h1>
+		<h2>Event</h2>
+		<h4>Name : {eventData.name}</h4>
+		<h4>Start Time : {startTime.toLocaleString()}</h4>
+		<h4>End Time : {endTime.toLocaleString()}</h4>
+		<h4>Status : {eventData.status}</h4>
 		{#if eventData.status === 'SUCCESS' && browser}
 			<div class="mt-2">
-				<h2 class="font-bold">Monitoring</h2>
+				<h3 class="font-bold">Monitoring</h3>
 				<div class="flex mt-1 mb-3">
 					<div class="flex-1 mb-3 mx-3 overflow-y-auto max-h-[75vh]">
 						{#await import('$lib/components/chart/node-pool-chart.svelte')}
-							<h3>Loading Component...</h3>
+							<h4>Loading Component...</h4>
 						{:then c}
 							{#each eventData.updated_node_pools as updatedNodePool}
 								<svelte:component
@@ -82,12 +81,12 @@
 								/>
 							{/each}
 						{:catch e}
-							<h3>Error Loading Component : {e}</h3>
+							<h4>Error Loading Component : {e}</h4>
 						{/await}
 					</div>
 					<div class="flex-1 mb-3 mx-3 overflow-y-auto max-h-[75vh]">
 						{#await import('$lib/components/chart/hpa-chart.svelte')}
-							<h3>Loading Component...</h3>
+							<h4>Loading Component...</h4>
 						{:then c}
 							{#each eventData.modified_hpa_configs as modifiedHPAConfig}
 								<svelte:component
@@ -100,7 +99,7 @@
 								/>
 							{/each}
 						{:catch e}
-							<h3>Error Loading Component : {e}</h3>
+							<h4>Error Loading Component : {e}</h4>
 						{/await}
 					</div>
 				</div>

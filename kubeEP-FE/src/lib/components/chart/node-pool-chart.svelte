@@ -75,14 +75,14 @@
 </script>
 
 {#if !loaded}
-	<h3>Loading...</h3>
+	<h4>Loading...</h4>
 {/if}
 
 {#if data.length > 0 && !error && loaded}
 	<div class="mb-2">
 		<SvelteFusioncharts {...getChartConfig(data, schema)} />
 		<div class="text-left">
-			<h3>Maximum Spawned Nodes : {maximumNodes}</h3>
+			<h4>Maximum Spawned Nodes : {maximumNodes}</h4>
 		</div>
 	</div>
 {/if}

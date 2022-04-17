@@ -6,7 +6,6 @@ import (
 	errorConstant "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant/errors"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/request"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/response"
-	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/repository/model"
 	useCase "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/usecase"
 	"gorm.io/gorm"
 )
@@ -50,9 +49,10 @@ func (ch *cluster) GetAllRegisteredClusters(c *fiber.Ctx) error {
 	for _, cluster := range existingClusters {
 		responses = append(
 			responses, response.Cluster{
-				ID:         &cluster.ID,
-				Name:       cluster.Name,
-				Datacenter: model.GCP,
+				ID:             &cluster.ID,
+				Name:           cluster.Name,
+				Datacenter:     cluster.Datacenter.Datacenter,
+				DatacenterName: cluster.Datacenter.Name,
 			},
 		)
 	}

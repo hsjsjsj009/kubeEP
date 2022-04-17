@@ -298,9 +298,10 @@ func (e *event) GetDetailedEvent(c *fiber.Ctx) error {
 		CreatedAt: eventData.CreatedAt,
 		UpdatedAt: eventData.UpdatedAt,
 		Cluster: response.Cluster{
-			ID:         &eventData.Cluster.ID,
-			Name:       eventData.Cluster.Name,
-			Datacenter: eventData.Cluster.Datacenter.Datacenter,
+			ID:             &eventData.Cluster.ID,
+			Name:           eventData.Cluster.Name,
+			Datacenter:     eventData.Cluster.Datacenter.Datacenter,
+			DatacenterName: eventData.Cluster.Datacenter.Name,
 		},
 		ModifiedHPAConfigs: modifiedHPAConfigRes,
 		UpdatedNodePools:   updatedNodePoolRes,

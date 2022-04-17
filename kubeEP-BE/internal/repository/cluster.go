@@ -92,7 +92,8 @@ func (d *cluster) ListAllRegisteredCluster(tx *gorm.DB) ([]*model.Cluster, error
 		       c.certificate, 
 		       c.server_endpoint,
 		       c.latest_hpa_api_version,
-		       d.datacenter
+		       d.datacenter,
+		       d.name
 		from clusters c
 		join datacenters d on d.id = c.datacenter_id and d.deleted_at is null
 		where c.deleted_at is null
@@ -114,6 +115,7 @@ func (d *cluster) ListAllRegisteredCluster(tx *gorm.DB) ([]*model.Cluster, error
 			&cluster.ServerEndpoint,
 			&cluster.LatestHPAAPIVersion,
 			&cluster.Datacenter.Datacenter,
+			&cluster.Datacenter.Name,
 		)
 		if err != nil {
 			return nil, err

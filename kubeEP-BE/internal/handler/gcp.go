@@ -129,8 +129,9 @@ func (g *gcp) GetClustersByDatacenterID(c *fiber.Ctx) error {
 		clusterData = append(
 			clusterData, response.GCPCluster{
 				Cluster: response.Cluster{
-					Name:       cluster.Name,
-					Datacenter: model.GCP,
+					Name:           cluster.Name,
+					Datacenter:     model.GCP,
+					DatacenterName: data.Name,
 				},
 				Location: cluster.Location,
 			},
@@ -256,9 +257,10 @@ func (g *gcp) RegisterClusterWithDatacenter(c *fiber.Ctx) error {
 		responses = append(
 			responses, response.GCPCluster{
 				Cluster: response.Cluster{
-					ID:         &cluster.ID,
-					Name:       cluster.Name,
-					Datacenter: model.GCP,
+					ID:             &cluster.ID,
+					Name:           cluster.Name,
+					Datacenter:     model.GCP,
+					DatacenterName: data.Name,
 				},
 				Location: cluster.Location,
 			},

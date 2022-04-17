@@ -6,9 +6,10 @@ import (
 )
 
 type Cluster struct {
-	ID         *uuid.UUID               `json:"id,omitempty"`
-	Name       string                   `json:"name"`
-	Datacenter model.DatacenterProvider `json:"datacenter"`
+	ID             *uuid.UUID               `json:"id,omitempty"`
+	Name           string                   `json:"name"`
+	Datacenter     model.DatacenterProvider `json:"datacenter"`
+	DatacenterName string                   `json:"datacenter_name,omitempty"`
 }
 
 type UpdatedNodePool struct {

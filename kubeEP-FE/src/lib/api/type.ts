@@ -3,7 +3,8 @@ import type { Datacenter } from '$lib/types/datacenter';
 export interface Cluster {
 	id: string;
 	name: string;
-	datacenter: Datacenter;
+	datacenter: Datacenter
+	datacenter_name: string
 }
 
 export interface ModifiedHPAConfig {
@@ -56,4 +57,31 @@ export interface HPAStatus {
 	available_replicas: number;
 	ready_replicas: number;
 	unavailable_replicas: number;
+}
+
+export interface RegisterGCPDatacenterRequest {
+	name: string;
+	// eslint-disable-next-line @typescript-eslint/ban-types
+	sa_key_credentials: Object;
+	is_temporary: boolean
+}
+
+export interface DatacenterResponse {
+	datacenter_id: string
+	is_temporary: boolean
+}
+
+export interface GCPCluster extends Cluster {
+	location: string
+}
+
+export interface GCPClusterResponse {
+	clusters: GCPCluster[]
+	is_temporary_datacenter: boolean
+}
+
+export interface GCPRegisterClustersRequest {
+	clusters_name: string[]
+	datacenter_id: string
+	is_datacenter_temporary: boolean
 }

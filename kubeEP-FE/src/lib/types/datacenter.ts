@@ -1,3 +1,4 @@
 export enum Datacenter {
-	GCP = 'GCP'
+	GCP = 'GCP',
+	AWS = 'AWS'
 }

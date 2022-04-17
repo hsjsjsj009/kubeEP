@@ -117,17 +117,17 @@
 </script>
 
 {#if !loaded}
-	<h3>Loading...</h3>
+	<h4>Loading...</h4>
 {/if}
 
 {#if data.length > 0 && !error && loaded}
 	<div class="mb-2">
 		<SvelteFusioncharts {...getChartConfig(data, schema)} />
 		<div class="text-left">
-			<h3>Maximum Spawned Replicas : {maximumPodsStatistic.replicas}</h3>
-			<h3>Maximum Spawned Ready Replicas : {maximumPodsStatistic.readyReplicas}</h3>
-			<h3>Maximum Spawned Available Replicas : {maximumPodsStatistic.availableReplicas}</h3>
-			<h3>Maximum Spawned Unavailable Replicas : {maximumPodsStatistic.unavailableReplicas}</h3>
+			<h4>Maximum Spawned Replicas : {maximumPodsStatistic.replicas}</h4>
+			<h4>Maximum Spawned Ready Replicas : {maximumPodsStatistic.readyReplicas}</h4>
+			<h4>Maximum Spawned Available Replicas : {maximumPodsStatistic.availableReplicas}</h4>
+			<h4>Maximum Spawned Unavailable Replicas : {maximumPodsStatistic.unavailableReplicas}</h4>
 		</div>
 	</div>
 {/if}

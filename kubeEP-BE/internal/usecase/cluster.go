@@ -150,6 +150,7 @@ func (c *cluster) GetAllClustersInLocal(tx *gorm.DB) ([]UCEntity.ClusterData, er
 				ServerEndpoint: cluster.ServerEndpoint,
 				Datacenter: UCEntity.DatacenterDetailedData{
 					Datacenter: cluster.Datacenter.Datacenter,
+					Name:       cluster.Datacenter.Name,
 				},
 			},
 		)

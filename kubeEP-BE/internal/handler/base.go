@@ -67,13 +67,13 @@ func (h kubernetesBaseHandler) getClusterKubernetesClient(
 	ctx context.Context,
 	tx *gorm.DB,
 	clusterID uuid.UUID,
-) (kubernetes.Interface, constant.HPAVersion, error) {
+) (kubernetes.Interface, *UCEntity.ClusterData, error) {
 	clusterData, err := h.generalClusterUC.GetClusterAndDatacenterDataByClusterID(
 		tx,
 		clusterID,
 	)
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 	var kubernetesClient kubernetes.Interface
 	switch clusterData.Datacenter.Datacenter {
@@ -88,7 +88,7 @@ func (h kubernetesBaseHandler) getClusterKubernetesClient(
 			datacenterData,
 		)
 		if err != nil {
-			return nil, "", err
+			return nil, nil, err
 		}
 		h.gcpClusterUC.RegisterGoogleCredentials(datacenterName, googleCredential)
 		kubernetesClient, err = h.gcpClusterUC.GetKubernetesClusterClient(
@@ -96,10 +96,10 @@ func (h kubernetesBaseHandler) getClusterKubernetesClient(
 			clusterData,
 		)
 		if err != nil {
-			return nil, "", err
+			return nil, nil, err
 		}
 	default:
-		return nil, "", errors.New(errorConstant.DatacenterTypeNotFound)
+		return nil, nil, errors.New(errorConstant.DatacenterTypeNotFound)
 	}
-	return kubernetesClient, clusterData.LatestHPAAPIVersion, nil
+	return kubernetesClient, clusterData, nil
 }

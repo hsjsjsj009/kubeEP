@@ -17,3 +17,8 @@ type UpdatedNodePool struct {
 	NodePoolName string    `json:"node_pool_name"`
 	MaxNode      int32     `json:"max_node"`
 }
+
+type ClusterDetailResponse struct {
+	Cluster Cluster     `json:"cluster"`
+	HPAList []SimpleHPA `json:"hpa_list"`
+}

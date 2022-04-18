@@ -29,9 +29,14 @@ func buildRoute(handlers *handler.Handlers, router fiber.Router) {
 	)
 
 	router.Route(
-		"/clusters", func(router fiber.Router) {
-			router.Get("/", handlers.ClusterHandler.GetAllRegisteredClusters)
-			router.Get("/hpa", handlers.ClusterHandler.GetAllHPA)
+		"/cluster", func(router fiber.Router) {
+			router.Get("/list", handlers.ClusterHandler.GetAllRegisteredClusters)
+			router.Route(
+				"/:cluster_id", func(router fiber.Router) {
+					router.Get("/detail", handlers.ClusterHandler.GetClusterDataWithAllHPA)
+					router.Get("/", handlers.ClusterHandler.GetClusterSimpleData)
+				},
+			)
 		},
 	)
 

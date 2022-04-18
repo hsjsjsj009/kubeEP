@@ -161,7 +161,7 @@
                             {/if}
                         </button>
                         {#if registerClusterDone}
-                            <p>Register cluster done, will be redirected to homepage in 2 seconds</p>
+                            <p class="mt-2">Register cluster done, will be redirected to homepage in 2 seconds</p>
                         {/if}
                     {/if}
                 </div>

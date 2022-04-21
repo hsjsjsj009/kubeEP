@@ -15,13 +15,13 @@ export interface ModifiedHPAConfig {
 	max_replicas: number;
 }
 
-enum EventStatus {
-	EventFailed = 'FAILED',
-	EventSuccess = 'SUCCESS',
-	EventExecuting = 'EXECUTING',
-	EventPrescaled = 'PRESCALED',
-	EventWatching = 'WATCHING',
-	EventPending = 'PENDING'
+export enum EventStatus {
+	Failed = 'FAILED',
+	Success = 'SUCCESS',
+	Executing = 'EXECUTING',
+	Prescaled = 'PRESCALED',
+	Watching = 'WATCHING',
+	Pending = 'PENDING'
 }
 
 export interface UpdatedNodePool {
@@ -98,5 +98,32 @@ export interface SimpleHPA {
 export interface ClusterDetailResponse {
 	cluster: Cluster
 	hpa_list: SimpleHPA[]
+}
+
+export interface EventModifiedHPAConfigData {
+	name: string
+	namespace: string
+	min_replicas: number
+	max_replicas: number
+}
+
+export interface EventDataRequest {
+	name: string
+	start_time: string
+	end_time: string
+	cluster_id: string
+	modified_hpa_configs: EventModifiedHPAConfigData[]
+}
+
+export interface EventCreationResponse {
+	event_id: string
+}
+
+export interface UpdateEventDataRequest {
+	name: string
+	start_time: string
+	end_time: string
+	event_id: string
+	modified_hpa_configs: EventModifiedHPAConfigData[]
 }
 

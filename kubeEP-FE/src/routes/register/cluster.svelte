@@ -102,7 +102,7 @@
     </div>
     <div class="mt-1">
         <label for="datacenter-name">Datacenter Name :</label>
-        <input type="text" class="border-black border rounded px-1" bind:value={datacenterName} id="datacenter-name">
+        <input type="text" bind:value={datacenterName} id="datacenter-name">
     </div>
     {#if selectedDatacenter === Datacenter.GCP}
         {#if browser}
@@ -111,7 +111,7 @@
                 <JSONEditor bind:content={saContent} bind:mode={mode} />
             </div>
             <div class="mt-1">
-                <button on:click={() => gcpFetchCluster(datacenterName, mode === "code" ? JSON.parse(saContent.text) : saContent.json)} disabled={loading} class="rounded-3xl border-black border-2 p-2 disabled:border-gray-500 disabled:text-gray-500">
+                <button on:click={() => gcpFetchCluster(datacenterName, mode === "code" ? JSON.parse(saContent.text) : saContent.json)} disabled={loading}>
                     {#if loading}
                         Loading...
                     {:else}
@@ -153,7 +153,7 @@
                         </tbody>
                     </table>
                     {#if !loading && !fetchGCPClusterError}
-                        <button on:click={() => gcpRegisterClusters(pickedClusters, datacenterID)} disabled={registerClusterLoading} class="rounded-3xl border-black border-2 p-2 mt-3 max-w-fit disabled:border-gray-500 disabled:text-gray-500">
+                        <button on:click={() => gcpRegisterClusters(pickedClusters, datacenterID)} disabled={registerClusterLoading}>
                             {#if registerClusterLoading}
                                 Loading...
                             {:else}

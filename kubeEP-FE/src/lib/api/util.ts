@@ -33,28 +33,28 @@ const get = <R>(url: string, headers?: AxiosRequestHeaders): AxiosPromise<Respon
 // function to execute the http delete request
 const deleteRequest = <Request, R>(
 	url: string,
-	request: Request,
+	request?: Request,
 	headers?: AxiosRequestHeaders
 ): AxiosPromise<Response<R>> => apiRequest('delete', url, request, headers);
 
 // function to execute the http post request
 const post = <Request, R>(
 	url: string,
-	request: Request,
+	request?: Request,
 	headers?: AxiosRequestHeaders
 ): AxiosPromise<Response<R>> => apiRequest('post', url, request, headers);
 
 // function to execute the http put request
 const put = <Request, R>(
 	url: string,
-	request: Request,
+	request?: Request,
 	headers?: AxiosRequestHeaders
 ): AxiosPromise<Response<R>> => apiRequest('put', url, request, headers);
 
 // function to execute the http path request
 const patch = <Request, R>(
 	url: string,
-	request: Request,
+	request?: Request,
 	headers?: AxiosRequestHeaders
 ): AxiosPromise<Response<R>> => apiRequest('patch', url, request, headers);
 

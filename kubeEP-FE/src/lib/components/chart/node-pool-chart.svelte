@@ -4,7 +4,7 @@
 	import SvelteFusioncharts, { fcRoot } from 'svelte-fusioncharts';
 	import { GetEventNodePoolStatistics } from '$lib/api/statistics.ts';
 	import { onMount } from 'svelte';
-	import moment from 'moment';
+	import dayjs from 'dayjs';
 
 	export let id;
 	export let name;
@@ -20,7 +20,7 @@
 	onMount(async () => {
 		try {
 			const response = await GetEventNodePoolStatistics(id);
-			data = response.map((o) => [moment(o.created_at).format('YYYY-MM-DD hh:mm:ss A'), o.count]);
+			data = response.map((o) => [dayjs(o.created_at).format('YYYY-MM-DD hh:mm:ss A'), o.count]);
 			maximumNodes = data.reduce(
 				(prev, current) => (prev < current[1] ? current[1] : prev),
 				maximumNodes

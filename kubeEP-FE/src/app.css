@@ -22,6 +22,14 @@
     small {
         @apply text-sm;
     }
+
+    input {
+        @apply border-black border rounded px-1;
+    }
+
+    button {
+        @apply rounded-3xl border-black border-2 p-2 disabled:border-gray-500 disabled:text-gray-500
+    }
 }
 
 h3 {

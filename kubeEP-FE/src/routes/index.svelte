@@ -51,7 +51,7 @@
         {:else}
             {#each clustersData as cluster}
                 <tr>
-                    <td class="border border-slate-300 p-2"><a sveltekit:prefetch href="/cluster/{cluster.id}"><h4>{cluster.name}</h4></a></td>
+                    <td class="border border-slate-300 p-2"><a sveltekit:prefetch href="/cluster/{cluster.id}/"><h4>{cluster.name}</h4></a></td>
                     <td class="border border-slate-300 p-2 text-center"><h4>{cluster.datacenter_name} - {cluster.datacenter}</h4></td>
                 </tr>
             {/each}

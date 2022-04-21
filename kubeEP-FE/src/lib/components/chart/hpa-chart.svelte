@@ -4,7 +4,7 @@
 	import SvelteFusioncharts, { fcRoot } from 'svelte-fusioncharts';
 	import { GetEventHPAStatistics } from '$lib/api/statistics.ts';
 	import { onMount } from 'svelte';
-	import moment from 'moment';
+	import dayjs from 'dayjs';
 
 	fcRoot(FusionCharts, Timeseries);
 
@@ -42,22 +42,22 @@
 			};
 			data = [
 				...response.map((o) => [
-					moment(o.created_at).format('YYYY-MM-DD hh:mm:ss A'),
+					dayjs(o.created_at).format('YYYY-MM-DD hh:mm:ss A'),
 					'Replicas',
 					o.replicas
 				]),
 				...response.map((o) => [
-					moment(o.created_at).format('YYYY-MM-DD hh:mm:ss A'),
+					dayjs(o.created_at).format('YYYY-MM-DD hh:mm:ss A'),
 					'Ready Replicas',
 					o.ready_replicas
 				]),
 				...response.map((o) => [
-					moment(o.created_at).format('YYYY-MM-DD hh:mm:ss A'),
+					dayjs(o.created_at).format('YYYY-MM-DD hh:mm:ss A'),
 					'Available Replicas',
 					o.available_replicas
 				]),
 				...response.map((o) => [
-					moment(o.created_at).format('YYYY-MM-DD hh:mm:ss A'),
+					dayjs(o.created_at).format('YYYY-MM-DD hh:mm:ss A'),
 					'Unavailable Replicas',
 					o.unavailable_replicas
 				])

@@ -13,7 +13,7 @@ import (
 
 type Cluster interface {
 	GetAllRegisteredClusters(c *fiber.Ctx) error
-	GetClusterDataWithAllHPA(c *fiber.Ctx) error
+	GetClusterAllHPA(c *fiber.Ctx) error
 	GetClusterSimpleData(c *fiber.Ctx) error
 }
 
@@ -90,7 +90,7 @@ func (ch *cluster) GetClusterSimpleData(c *fiber.Ctx) error {
 	return ch.successResponse(c, res)
 }
 
-func (ch *cluster) GetClusterDataWithAllHPA(c *fiber.Ctx) error {
+func (ch *cluster) GetClusterAllHPA(c *fiber.Ctx) error {
 	clusterIDStr := c.Params("cluster_id")
 	clusterID, err := uuid.Parse(clusterIDStr)
 	if err != nil {
@@ -132,14 +132,5 @@ func (ch *cluster) GetClusterDataWithAllHPA(c *fiber.Ctx) error {
 		)
 	}
 
-	res := response.ClusterDetailResponse{
-		Cluster: response.Cluster{
-			Name:           clusterData.Name,
-			Datacenter:     clusterData.Datacenter.Datacenter,
-			DatacenterName: clusterData.Datacenter.Name,
-		},
-		HPAList: listHPA,
-	}
-
-	return ch.successResponse(c, res)
+	return ch.successResponse(c, listHPA)
 }

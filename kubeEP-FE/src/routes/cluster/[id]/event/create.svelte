@@ -104,7 +104,7 @@
 </div>
 <div class="mb-2">
     <label for="event-end">End Time : </label>
-    <DatetimeInput id="event-end" minDate={endDate} bind:date={endDate}/>
+    <DatetimeInput id="event-end" minDate={startDate.add(dayjs.duration({minutes:1}))} bind:date={endDate}/>
 </div>
 <div class="mb-2 text-center">
     {#if loadingHPA}

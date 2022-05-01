@@ -18,7 +18,7 @@ const (
 
 type Event struct {
 	BaseModel
-	Name      string `gorm:"uniqueIndex"`
+	Name      string
 	StartTime time.Time
 	EndTime   time.Time
 	ClusterID gormDatatype.UUID

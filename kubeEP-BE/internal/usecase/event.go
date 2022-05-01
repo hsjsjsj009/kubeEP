@@ -214,7 +214,7 @@ func (e *event) GetAllPendingExecutableEvent(tx *gorm.DB, now time.Time) (
 	[]*UCEntity.Event,
 	error,
 ) {
-	events, err := e.eventRepository.FindEventByStatusWithStarTimeBeforeMinute(
+	events, err := e.eventRepository.FindEventByStatusWithStarTimeBeforeMinuteAndClusterData(
 		tx,
 		model.EventPending,
 		20,

@@ -1,6 +1,7 @@
 package useCase
 
 import (
+	compute "cloud.google.com/go/compute/apiv1"
 	container "cloud.google.com/go/container/apiv1"
 	"context"
 	"encoding/json"
@@ -41,6 +42,14 @@ type GCPCluster interface {
 		credentialsName string,
 		clusterData *UCEntity.ClusterData,
 	) (*kubernetes.Clientset, error)
+	GetGoogleInstanceGroupManagersClient(
+		ctx context.Context,
+		googleCredential *google.Credentials,
+	) (*compute.InstanceGroupManagersClient, error)
+	GetGoogleInstanceTemplatesClient(
+		ctx context.Context,
+		googleCredential *google.Credentials,
+	) (*compute.InstanceTemplatesClient, error)
 }
 
 type gcpCluster struct {
@@ -76,6 +85,20 @@ func (c *gcpCluster) GetGoogleClusterClient(
 	googleCredential *google.Credentials,
 ) (*container.ClusterManagerClient, error) {
 	return container.NewClusterManagerClient(ctx, option.WithCredentials(googleCredential))
+}
+
+func (c *gcpCluster) GetGoogleInstanceGroupManagersClient(
+	ctx context.Context,
+	googleCredential *google.Credentials,
+) (*compute.InstanceGroupManagersClient, error) {
+	return compute.NewInstanceGroupManagersRESTClient(ctx, option.WithCredentials(googleCredential))
+}
+
+func (c *gcpCluster) GetGoogleInstanceTemplatesClient(
+	ctx context.Context,
+	googleCredential *google.Credentials,
+) (*compute.InstanceTemplatesClient, error) {
+	return compute.NewInstanceTemplatesRESTClient(ctx, option.WithCredentials(googleCredential))
 }
 
 func (c *gcpCluster) GetAllClustersInGCPProject(

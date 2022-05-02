@@ -17,6 +17,7 @@ import (
 	"k8s.io/api/autoscaling/v1"
 	"k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/api/autoscaling/v2beta2"
+	v1Core "k8s.io/api/core/v1"
 	v1Option "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -230,10 +231,16 @@ func (c *cron) execGCPEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context)
 			totalRequestedMemory += containerData.Resources.Requests.Memory().AsApproximateFloat64()
 			totalRequestedCPU += containerData.Resources.Requests.Cpu().AsApproximateFloat64()
 		}
+		var nodeAffinity *v1Core.NodeAffinity
+		if spec.Affinity != nil {
+			if spec.Affinity.NodeAffinity != nil {
+				nodeAffinity = spec.Affinity.NodeAffinity
+			}
+		}
 		daemonSetsData = append(
 			daemonSetsData, &DaemonSetData{
 				NodeSelector:    labels.Set(spec.NodeSelector).AsSelector(),
-				NodeAffinity:    spec.Affinity.NodeAffinity,
+				NodeAffinity:    nodeAffinity,
 				RequestedMemory: totalRequestedMemory,
 				RequestedCPU:    totalRequestedCPU,
 				Name:            daemonSet.Name,
@@ -479,7 +486,12 @@ func (c *cron) execGCPEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context)
 					// Get Labels Selector and Calculate Requested Resource
 					var maxRequestedCPU, maxRequestedMemory float64
 					nodeSelector := labels.Set(resolveRes.Spec.Template.Spec.NodeSelector).AsSelector()
-					nodeAffinity := resolveRes.Spec.Template.Spec.Affinity.NodeAffinity
+					var nodeAffinity *v1Core.NodeAffinity
+					if resolveRes.Spec.Template.Spec.Affinity != nil {
+						if resolveRes.Spec.Template.Spec.Affinity.NodeAffinity != nil {
+							nodeAffinity = resolveRes.Spec.Template.Spec.Affinity.NodeAffinity
+						}
+					}
 
 					totalCpuRequested := float64(0)
 					totalMemoryRequested := float64(0)
@@ -604,7 +616,12 @@ func (c *cron) execGCPEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context)
 					// Get Labels Selector and Calculate Requested Resource
 					var maxRequestedCPU, maxRequestedMemory float64
 					nodeSelector := labels.Set(resolveRes.Spec.Template.Spec.NodeSelector).AsSelector()
-					nodeAffinity := resolveRes.Spec.Template.Spec.Affinity.NodeAffinity
+					var nodeAffinity *v1Core.NodeAffinity
+					if resolveRes.Spec.Template.Spec.Affinity != nil {
+						if resolveRes.Spec.Template.Spec.Affinity.NodeAffinity != nil {
+							nodeAffinity = resolveRes.Spec.Template.Spec.Affinity.NodeAffinity
+						}
+					}
 
 					totalCpuRequested := float64(0)
 					totalMemoryRequested := float64(0)
@@ -689,7 +706,12 @@ func (c *cron) execGCPEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context)
 					// Get Labels Selector and Calculate Requested Resource
 					var maxRequestedCPU, maxRequestedMemory float64
 					nodeSelector := labels.Set(d.Spec.Template.Spec.NodeSelector).AsSelector()
-					nodeAffinity := d.Spec.Template.Spec.Affinity.NodeAffinity
+					var nodeAffinity *v1Core.NodeAffinity
+					if d.Spec.Template.Spec.Affinity != nil {
+						if d.Spec.Template.Spec.Affinity.NodeAffinity != nil {
+							nodeAffinity = d.Spec.Template.Spec.Affinity.NodeAffinity
+						}
+					}
 
 					totalCpuRequested := float64(0)
 					totalMemoryRequested := float64(0)
@@ -798,6 +820,18 @@ func (c *cron) execGCPEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context)
 					if reqResources.MaxPods > maxResources.MaxAvailablePods {
 						unfulfilledPods = reqResources.MaxPods - maxResources.MaxAvailablePods
 					}
+
+					log.Infof(
+						"[EventCronJob] Event : %s, Node pool %s, %f requested cpu (%f max available cpu), %f requested memory (%f max available memory), %d requested pods (%d max available pods)",
+						e.Name,
+						nodePoolObj.Name,
+						reqResources.MaxCPU,
+						maxResources.MaxAvailableCPU,
+						reqResources.MaxMemory,
+						maxResources.MaxAvailableMemory,
+						reqResources.MaxPods,
+						maxResources.MaxAvailablePods,
+					)
 
 					neededNodeBasedOnCPU := math.Ceil(unfulfilledCPU / maxResources.AvailableCPU)
 					neededNodeBasedOnMemory := math.Ceil(unfulfilledMemory / maxResources.AvailableMemory)

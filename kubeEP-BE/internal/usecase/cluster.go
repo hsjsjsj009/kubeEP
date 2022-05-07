@@ -3,6 +3,7 @@ package useCase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant"
@@ -11,6 +12,7 @@ import (
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/repository"
 	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
+	v1Apps "k8s.io/api/apps/v1"
 	v1hpa "k8s.io/api/autoscaling/v1"
 	"k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/api/autoscaling/v2beta2"
@@ -57,6 +59,12 @@ type Cluster interface {
 		scaleTargetRef interface{},
 		namespace string,
 	) (res interface{}, err error)
+	ResolveScaleTargetRefByDeploymentsMap(
+		scaleTargetRef interface{},
+		namespace string,
+		deploymentsMap map[string]v1Apps.Deployment,
+		deleteKey ...bool,
+	) (res *v1Apps.Deployment, err error)
 }
 
 type cluster struct {
@@ -493,6 +501,53 @@ func (c *cluster) UpdateHPAK8sObjectBatch(
 		)
 	}
 	return errGroup.Wait()
+}
+
+func (c *cluster) ResolveScaleTargetRefByDeploymentsMap(
+	scaleTargetRef interface{},
+	namespace string,
+	deploymentsMap map[string]v1Apps.Deployment,
+	deleteKey ...bool,
+) (res *v1Apps.Deployment, err error) {
+	var apiVersion, kind, name string
+
+	switch ref := scaleTargetRef.(type) {
+	case v1hpa.CrossVersionObjectReference:
+		apiVersion = ref.APIVersion
+		kind = ref.Kind
+		name = ref.Name
+	case v2beta1.CrossVersionObjectReference:
+		apiVersion = ref.APIVersion
+		kind = ref.Kind
+		name = ref.Name
+	case v2beta2.CrossVersionObjectReference:
+		apiVersion = ref.APIVersion
+		kind = ref.Kind
+		name = ref.Name
+	default:
+		return nil, errors.New(errorConstant.HPAVersionUnknown)
+	}
+
+	switch apiVersion {
+	case constant.AppsV1:
+	default:
+		return nil, errors.New(errorConstant.TargetRefResolveError)
+	}
+
+	switch kind {
+	case constant.Deployment:
+		key := fmt.Sprintf(constant.NameNSKeyFormat, name, namespace)
+		res, ok := deploymentsMap[key]
+		if !ok {
+			return nil, errors.New(errorConstant.DeploymentNotFound)
+		}
+		if len(deleteKey) > 0 {
+			delete(deploymentsMap, key)
+		}
+		return &res, nil
+	default:
+		return nil, errors.New(errorConstant.TargetRefResolveError)
+	}
 }
 
 func (c *cluster) ResolveScaleTargetRef(

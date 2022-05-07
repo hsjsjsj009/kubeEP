@@ -214,7 +214,7 @@ func (e *event) GetAllPendingExecutableEvent(tx *gorm.DB, now time.Time) (
 	[]*UCEntity.Event,
 	error,
 ) {
-	events, err := e.eventRepository.FindEventByStatusWithStarTimeBeforeMinute(
+	events, err := e.eventRepository.FindEventByStatusWithStarTimeBeforeMinuteAndClusterData(
 		tx,
 		model.EventPending,
 		20,
@@ -235,7 +235,7 @@ func (e *event) GetAllPendingExecutableEvent(tx *gorm.DB, now time.Time) (
 				Message:   event.Message,
 				StartTime: event.StartTime,
 				EndTime:   event.EndTime,
-				Cluster:   UCEntity.ClusterData{ID: event.ClusterID.GetUUID()},
+				Cluster:   UCEntity.ClusterData{Name: event.Cluster.Name, ID: event.ClusterID.GetUUID(), Datacenter: UCEntity.DatacenterDetailedData{Datacenter: event.Cluster.Datacenter.Datacenter}},
 			},
 		)
 	}
@@ -268,7 +268,7 @@ func (e *event) GetAllPrescaledEvent10MinBeforeStart(tx *gorm.DB, now time.Time)
 				Message:   event.Message,
 				StartTime: event.StartTime,
 				EndTime:   event.EndTime,
-				Cluster:   UCEntity.ClusterData{ID: event.ClusterID.GetUUID()},
+				Cluster:   UCEntity.ClusterData{Name: event.Cluster.Name, ID: event.ClusterID.GetUUID(), Datacenter: UCEntity.DatacenterDetailedData{Datacenter: event.Cluster.Datacenter.Datacenter}},
 			},
 		)
 	}

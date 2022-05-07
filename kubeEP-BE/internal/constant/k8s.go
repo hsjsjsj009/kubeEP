@@ -11,3 +11,7 @@ const NameAndNamespaceKeyFormat = "%s|%s"
 const (
 	GCPNodePoolLabel = "cloud.google.com/gke-nodepool"
 )
+
+var (
+	MinimumPod = int32(1)
+)

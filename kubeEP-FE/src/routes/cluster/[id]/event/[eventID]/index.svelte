@@ -68,10 +68,10 @@
 		</div>
 	{/if}
 	{#if eventData.status === EventStatus.Success && browser}
-		<div class="mt-2">
+		<div class="mt-2 min-w-full">
 			<h3 class="font-bold">Monitoring</h3>
 			<div class="flex mt-1 mb-3">
-				<div class="flex-1 mb-3 mx-3 overflow-y-auto max-h-[75vh]">
+				<div class="flex-1 mb-3 mx-3 overflow-y-auto max-h-[75vh] min-w-[40vw]">
 					{#await import('$lib/components/chart/node-pool-chart.svelte')}
 						<h4>Loading Component...</h4>
 					{:then c}
@@ -87,7 +87,7 @@
 						<h4>Error Loading Component : {e}</h4>
 					{/await}
 				</div>
-				<div class="flex-1 mb-3 mx-3 overflow-y-auto max-h-[75vh]">
+				<div class="flex-1 mb-3 mx-3 overflow-y-auto max-h-[75vh] min-w-[40vw]">
 					{#await import('$lib/components/chart/hpa-chart.svelte')}
 						<h4>Loading Component...</h4>
 					{:then c}

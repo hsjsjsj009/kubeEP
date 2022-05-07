@@ -8,4 +8,6 @@ const (
 	GetClusterListError   = "get cluster list error"
 	HPAVersionUnknown     = "hpa version unknown"
 	TargetRefResolveError = "target ref resolve error"
+	DeploymentNotFound    = "deployment not found"
+	NoExistingNode        = "no existing node found"
 )

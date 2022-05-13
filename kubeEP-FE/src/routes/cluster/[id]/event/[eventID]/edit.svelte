@@ -24,7 +24,6 @@
     import {GetClusterHPAs} from "$lib/api/clusters";
     import duration from "dayjs/plugin/duration"
     import {UpdateEvent} from "$lib/api/event";
-    import {goto} from "$app/navigation";
 
     dayjs.extend(duration)
 
@@ -40,6 +39,7 @@
     let eventName = eventData.name
     let startDate = dayjs(eventData.start_time)
     let endDate = dayjs(eventData.end_time)
+    let calculateNodePool = eventData.calculate_node_pool
 
     let editEvent = getContext<Writable<boolean>>(EditEvent)
     $editEvent = true
@@ -92,7 +92,8 @@
             end_time: endDate.toJSON(),
             modified_hpa_configs: selectedHPA,
             name: eventName,
-            start_time: startDate.toJSON()
+            start_time: startDate.toJSON(),
+            calculate_node_pool: calculateNodePool
         }
         try {
             await UpdateEvent(req)
@@ -134,6 +135,14 @@
     <div class="mb-2">
         <label for="event-end">End Time : </label>
         <DatetimeInput id="event-end" minDate={endDate} bind:date={endDate}/>
+    </div>
+    <div class="mb-2">
+        <label for="event-end">End Time : </label>
+        <DatetimeInput id="event-end" minDate={endDate} bind:date={endDate}/>
+    </div>
+    <div class="mb-2">
+        <label for="calculate-node-pool">Calculate Node Pool : </label>
+        <input type="checkbox" id="calculate-node-pool" bind:checked={calculateNodePool}>
     </div>
     <div class="mb-2 text-center">
         {#if loadingHPA}

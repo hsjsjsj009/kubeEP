@@ -116,6 +116,7 @@
         <h4>Start Time : {startTime.toLocaleString()}</h4>
         <h4>End Time : {endTime.toLocaleString()}</h4>
         <h4>Status : {eventData.status}</h4>
+        <h4>Calculate Node Pool : {eventData.calculate_node_pool ? "Yes" : "No"}</h4>
         <button on:click={deleteEvent} class="mb-2 rounded-3xl border-2 p-2 mx-2"><h4>Delete</h4></button>
         {#if errDelete}
             <p class="mb-2">Error Delete : {errDelete}</p>

@@ -22,6 +22,7 @@ type EventDetailedResponse struct {
 	EventSimpleResponse
 	CreatedAt          time.Time           `json:"created_at"`
 	UpdatedAt          time.Time           `json:"updated_at"`
+	CalculateNodePool  bool                `json:"calculate_node_pool"`
 	Cluster            Cluster             `json:"cluster"`
 	ModifiedHPAConfigs []ModifiedHPAConfig `json:"modified_hpa_configs"`
 	UpdatedNodePools   []UpdatedNodePool   `json:"updated_node_pools"`

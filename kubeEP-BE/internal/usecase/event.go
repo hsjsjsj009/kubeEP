@@ -55,9 +55,10 @@ func newEvent(
 
 func (e *event) RegisterEvents(tx *gorm.DB, eventData *UCEntity.Event) (uuid.UUID, error) {
 	data := &model.Event{
-		Name:      eventData.Name,
-		StartTime: eventData.StartTime,
-		EndTime:   eventData.EndTime,
+		Name:              eventData.Name,
+		StartTime:         eventData.StartTime,
+		EndTime:           eventData.EndTime,
+		CalculateNodePool: eventData.CalculateNodePool,
 	}
 	data.ClusterID.SetUUID(eventData.Cluster.ID)
 
@@ -74,14 +75,15 @@ func (e *event) GetEventByName(tx *gorm.DB, eventName string) (*UCEntity.Event, 
 		return nil, err
 	}
 	return &UCEntity.Event{
-		ID:        data.ID.GetUUID(),
-		Name:      data.Name,
-		StartTime: data.StartTime,
-		EndTime:   data.EndTime,
-		CreatedAt: data.CreatedAt,
-		UpdatedAt: data.UpdatedAt,
-		Status:    data.Status,
-		Message:   data.Message,
+		ID:                data.ID.GetUUID(),
+		Name:              data.Name,
+		StartTime:         data.StartTime,
+		EndTime:           data.EndTime,
+		CreatedAt:         data.CreatedAt,
+		UpdatedAt:         data.UpdatedAt,
+		Status:            data.Status,
+		Message:           data.Message,
+		CalculateNodePool: data.CalculateNodePool,
 	}, nil
 }
 
@@ -91,15 +93,16 @@ func (e *event) GetEventByID(tx *gorm.DB, eventID uuid.UUID) (*UCEntity.Event, e
 		return nil, err
 	}
 	return &UCEntity.Event{
-		ID:        eventID,
-		Name:      data.Name,
-		StartTime: data.StartTime,
-		EndTime:   data.EndTime,
-		CreatedAt: data.CreatedAt,
-		UpdatedAt: data.UpdatedAt,
-		Status:    data.Status,
-		Message:   data.Message,
-		Cluster:   UCEntity.ClusterData{ID: data.ClusterID.GetUUID()},
+		ID:                eventID,
+		Name:              data.Name,
+		StartTime:         data.StartTime,
+		EndTime:           data.EndTime,
+		CreatedAt:         data.CreatedAt,
+		UpdatedAt:         data.UpdatedAt,
+		Status:            data.Status,
+		Message:           data.Message,
+		CalculateNodePool: data.CalculateNodePool,
+		Cluster:           UCEntity.ClusterData{ID: data.ClusterID.GetUUID()},
 	}, nil
 }
 
@@ -112,14 +115,15 @@ func (e *event) ListEventByClusterID(tx *gorm.DB, clusterID uuid.UUID) ([]UCEnti
 	for _, event := range events {
 		output = append(
 			output, UCEntity.Event{
-				ID:        event.ID.GetUUID(),
-				Name:      event.Name,
-				StartTime: event.StartTime,
-				EndTime:   event.EndTime,
-				CreatedAt: event.CreatedAt,
-				UpdatedAt: event.UpdatedAt,
-				Status:    event.Status,
-				Message:   event.Message,
+				ID:                event.ID.GetUUID(),
+				Name:              event.Name,
+				StartTime:         event.StartTime,
+				EndTime:           event.EndTime,
+				CreatedAt:         event.CreatedAt,
+				UpdatedAt:         event.UpdatedAt,
+				Status:            event.Status,
+				Message:           event.Message,
+				CalculateNodePool: event.CalculateNodePool,
 			},
 		)
 	}
@@ -128,11 +132,12 @@ func (e *event) ListEventByClusterID(tx *gorm.DB, clusterID uuid.UUID) ([]UCEnti
 
 func (e *event) UpdateEvent(tx *gorm.DB, eventData *UCEntity.Event) error {
 	data := &model.Event{
-		Name:      eventData.Name,
-		StartTime: eventData.StartTime,
-		EndTime:   eventData.EndTime,
-		Status:    eventData.Status,
-		Message:   eventData.Message,
+		Name:              eventData.Name,
+		StartTime:         eventData.StartTime,
+		EndTime:           eventData.EndTime,
+		Status:            eventData.Status,
+		Message:           eventData.Message,
+		CalculateNodePool: eventData.CalculateNodePool,
 	}
 	data.CreatedAt = eventData.CreatedAt
 	data.UpdatedAt = eventData.UpdatedAt
@@ -168,14 +173,15 @@ func (e *event) GetDetailedEventData(tx *gorm.DB, eventID uuid.UUID) (
 
 	data := &UCEntity.DetailedEvent{
 		Event: UCEntity.Event{
-			CreatedAt: eventData.CreatedAt,
-			UpdatedAt: eventData.UpdatedAt,
-			ID:        eventID,
-			Name:      eventData.Name,
-			StartTime: eventData.StartTime,
-			Status:    eventData.Status,
-			Message:   eventData.Message,
-			EndTime:   eventData.EndTime,
+			CreatedAt:         eventData.CreatedAt,
+			UpdatedAt:         eventData.UpdatedAt,
+			ID:                eventID,
+			Name:              eventData.Name,
+			StartTime:         eventData.StartTime,
+			Status:            eventData.Status,
+			Message:           eventData.Message,
+			EndTime:           eventData.EndTime,
+			CalculateNodePool: eventData.CalculateNodePool,
 			Cluster: UCEntity.ClusterData{
 				ID:   eventData.ClusterID.GetUUID(),
 				Name: clusterData.Name,
@@ -227,15 +233,16 @@ func (e *event) GetAllPendingExecutableEvent(tx *gorm.DB, now time.Time) (
 	for _, event := range events {
 		eventsData = append(
 			eventsData, &UCEntity.Event{
-				CreatedAt: event.CreatedAt,
-				UpdatedAt: event.UpdatedAt,
-				ID:        event.ID.GetUUID(),
-				Status:    event.Status,
-				Name:      event.Name,
-				Message:   event.Message,
-				StartTime: event.StartTime,
-				EndTime:   event.EndTime,
-				Cluster:   UCEntity.ClusterData{Name: event.Cluster.Name, ID: event.ClusterID.GetUUID(), Datacenter: UCEntity.DatacenterDetailedData{Datacenter: event.Cluster.Datacenter.Datacenter}},
+				CreatedAt:         event.CreatedAt,
+				UpdatedAt:         event.UpdatedAt,
+				ID:                event.ID.GetUUID(),
+				Status:            event.Status,
+				Name:              event.Name,
+				Message:           event.Message,
+				StartTime:         event.StartTime,
+				EndTime:           event.EndTime,
+				CalculateNodePool: event.CalculateNodePool,
+				Cluster:           UCEntity.ClusterData{Name: event.Cluster.Name, ID: event.ClusterID.GetUUID(), Datacenter: UCEntity.DatacenterDetailedData{Datacenter: event.Cluster.Datacenter.Datacenter}},
 			},
 		)
 	}
@@ -260,15 +267,16 @@ func (e *event) GetAllPrescaledEvent10MinBeforeStart(tx *gorm.DB, now time.Time)
 	for _, event := range events {
 		eventsData = append(
 			eventsData, &UCEntity.Event{
-				CreatedAt: event.CreatedAt,
-				UpdatedAt: event.UpdatedAt,
-				ID:        event.ID.GetUUID(),
-				Status:    event.Status,
-				Name:      event.Name,
-				Message:   event.Message,
-				StartTime: event.StartTime,
-				EndTime:   event.EndTime,
-				Cluster:   UCEntity.ClusterData{Name: event.Cluster.Name, ID: event.ClusterID.GetUUID(), Datacenter: UCEntity.DatacenterDetailedData{Datacenter: event.Cluster.Datacenter.Datacenter}},
+				CreatedAt:         event.CreatedAt,
+				UpdatedAt:         event.UpdatedAt,
+				ID:                event.ID.GetUUID(),
+				Status:            event.Status,
+				Name:              event.Name,
+				Message:           event.Message,
+				StartTime:         event.StartTime,
+				EndTime:           event.EndTime,
+				CalculateNodePool: event.CalculateNodePool,
+				Cluster:           UCEntity.ClusterData{Name: event.Cluster.Name, ID: event.ClusterID.GetUUID(), Datacenter: UCEntity.DatacenterDetailedData{Datacenter: event.Cluster.Datacenter.Datacenter}},
 			},
 		)
 	}

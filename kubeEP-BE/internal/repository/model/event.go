@@ -18,13 +18,14 @@ const (
 
 type Event struct {
 	BaseModel
-	Name      string
-	StartTime time.Time
-	EndTime   time.Time
-	ClusterID gormDatatype.UUID
-	Status    EventStatus `gorm:"default:PENDING"`
-	Message   string
-	Cluster   Cluster `gorm:"ForeignKey:ClusterID;constraint:OnDelete:CASCADE"`
+	Name              string
+	StartTime         time.Time
+	EndTime           time.Time
+	ClusterID         gormDatatype.UUID
+	Status            EventStatus `gorm:"default:PENDING"`
+	Message           string
+	CalculateNodePool bool
+	Cluster           Cluster `gorm:"ForeignKey:ClusterID;constraint:OnDelete:CASCADE"`
 }
 
 func (e *Event) TableName() string {

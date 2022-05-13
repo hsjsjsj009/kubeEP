@@ -114,3 +114,5 @@ config/app.yaml
 app
 requests/*.http
 cron
+
+test.log

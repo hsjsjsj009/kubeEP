@@ -110,7 +110,8 @@ func (e *event) FindEventByStatusWithStarTimeBeforeMinuteAndClusterData(
     e.status, 
     e.message,
     c.name, 
-    d.datacenter  from events e 
+    d.datacenter,
+    e.calculate_node_pool from events e 
     join clusters c on c.id = e.cluster_id and c.deleted_at is null
     join datacenters d on d.id = c.datacenter_id and d.deleted_at is null
              where e.start_time - ? < ? * interval '1 minutes' and e.status = ? and e.deleted_at is null`,
@@ -137,6 +138,7 @@ func (e *event) FindEventByStatusWithStarTimeBeforeMinuteAndClusterData(
 			&eventData.Message,
 			&eventData.Cluster.Name,
 			&eventData.Cluster.Datacenter.Datacenter,
+			&eventData.CalculateNodePool,
 		)
 		if err != nil {
 			return nil, err

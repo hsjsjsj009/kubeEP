@@ -46,6 +46,7 @@
     let today = dayjs()
     let startDate = dayjs()
     let endDate = startDate.add(dayjs.duration({days:1}))
+    let calculateNodePool = true
     let loading = false
     let success = false
     let errCreate = null
@@ -58,7 +59,8 @@
             end_time: endDate.toJSON(),
             modified_hpa_configs: selectedHPA,
             name: eventName,
-            start_time: startDate.toJSON()
+            start_time: startDate.toJSON(),
+            calculate_node_pool: calculateNodePool
         }
         try {
             await CreateEvent(req)
@@ -105,6 +107,10 @@
 <div class="mb-2">
     <label for="event-end">End Time : </label>
     <DatetimeInput id="event-end" minDate={startDate.add(dayjs.duration({minutes:1}))} bind:date={endDate}/>
+</div>
+<div class="mb-2">
+    <label for="calculate-node-pool">Calculate Node Pool : </label>
+    <input type="checkbox" id="calculate-node-pool" bind:checked={calculateNodePool}>
 </div>
 <div class="mb-2 text-center">
     {#if loadingHPA}

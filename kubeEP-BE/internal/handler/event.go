@@ -64,6 +64,11 @@ func (e *event) RegisterEvents(c *fiber.Ctx) error {
 		return e.errorResponse(c, errorConstant.InvalidRequestBody)
 	}
 
+	if reqData.CalculateNodePool == nil {
+		active := true
+		reqData.CalculateNodePool = &active
+	}
+
 	utcNow := time.Now().UTC()
 	if utcNow.After(*reqData.StartTime) || utcNow.After(*reqData.EndTime) {
 		return e.errorResponse(c, errorConstant.InvalidRequestBody)
@@ -72,11 +77,6 @@ func (e *event) RegisterEvents(c *fiber.Ctx) error {
 	ctx := c.Context()
 	db := e.db.WithContext(ctx)
 	tx := db.Begin()
-
-	existingCluster, err := e.eventUC.GetEventByName(db, *reqData.Name)
-	if existingCluster != nil {
-		return e.errorResponse(c, errorConstant.EventExist)
-	}
 
 	kubernetesClient, clusterData, err := e.getClusterKubernetesClient(
 		ctx,
@@ -98,9 +98,10 @@ func (e *event) RegisterEvents(c *fiber.Ctx) error {
 	}
 
 	eventData := &UCEntity.Event{
-		Name:      *reqData.Name,
-		StartTime: *reqData.StartTime,
-		EndTime:   *reqData.EndTime,
+		Name:              *reqData.Name,
+		StartTime:         *reqData.StartTime,
+		EndTime:           *reqData.EndTime,
+		CalculateNodePool: *reqData.CalculateNodePool,
 	}
 	eventData.Cluster.ID = *reqData.ClusterID
 
@@ -198,11 +199,11 @@ func (e *event) UpdateEvent(c *fiber.Ctx) error {
 	}
 
 	if eventData.Name != *req.Name {
-		existingCluster, err := e.eventUC.GetEventByName(db, *req.Name)
-		if existingCluster != nil || err == nil {
-			return e.errorResponse(c, errorConstant.EventExist)
-		}
 		eventData.Name = *req.Name
+	}
+
+	if req.CalculateNodePool != nil {
+		eventData.CalculateNodePool = *req.CalculateNodePool
 	}
 
 	eventData.StartTime = *req.StartTime
@@ -305,6 +306,7 @@ func (e *event) GetDetailedEvent(c *fiber.Ctx) error {
 		},
 		ModifiedHPAConfigs: modifiedHPAConfigRes,
 		UpdatedNodePools:   updatedNodePoolRes,
+		CalculateNodePool:  eventData.CalculateNodePool,
 	}
 
 	return e.successResponse(c, res)

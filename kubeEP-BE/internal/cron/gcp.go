@@ -223,7 +223,7 @@ func (c *cron) execGCPEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context)
 		daemonSetsData, err := c.clusterUC.GetAllDaemonSetsInNamespace(
 			ctx,
 			kubernetesClient,
-			"kube-system",
+			"",
 		)
 		if err != nil {
 			c.handleExecEventError(db, e, err.Error())

@@ -23,6 +23,7 @@ func BuildUseCases(
 		GcpCluster: newGCPCluster(
 			resources.ValidatorInst, repositories.Cluster,
 			repositories.GCPCluster, repositories.K8SDiscovery,
+			repositories.K8sNode,
 		),
 		GcpDatacenter: newGCPDatacenter(repositories.Datacenter, resources.ValidatorInst),
 		Cluster: newCluster(
@@ -32,6 +33,7 @@ func BuildUseCases(
 			repositories.K8sNamespace,
 			repositories.K8SDiscovery,
 			repositories.K8sDeployment,
+			repositories.K8sDaemonSets,
 		),
 		Datacenter: newDatacenter(resources.ValidatorInst, repositories.Datacenter),
 		Event: newEvent(

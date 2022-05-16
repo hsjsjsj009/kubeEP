@@ -18,7 +18,6 @@ import (
 	"k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/api/autoscaling/v2beta2"
 	v1Core "k8s.io/api/core/v1"
-	v1Option "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"math"
@@ -135,10 +134,10 @@ func (c *cron) execGCPEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context)
 		modifiedHPAMap[key] = modifiedHPA
 	}
 
-	for _, hpa := range existingK8sHPA {
+	for _, data := range existingK8sHPA {
 		var name, namespace string
 		var deepCopy interface{}
-		switch h := hpa.(type) {
+		switch h := data.HPAObject.(type) {
 		case v1.HorizontalPodAutoscaler:
 			name = h.Name
 			namespace = h.Namespace
@@ -205,10 +204,12 @@ func (c *cron) execGCPEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context)
 	name := clusterMetadata[2]
 
 	// Get GCP Node Pools
-	googleClusterData, err := googleContainerClient.GetCluster(
-		ctx, &container.GetClusterRequest{
-			Name: fmt.Sprintf("projects/%s/locations/%s/cluster/%s", project, location, name),
-		},
+	googleClusterData, err := c.gcpClusterUC.GetGCPClusterObject(
+		ctx,
+		googleContainerClient,
+		project,
+		location,
+		name,
 	)
 	if err != nil {
 		c.handleExecEventError(db, e, err.Error())
@@ -216,17 +217,19 @@ func (c *cron) execGCPEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context)
 	}
 
 	// Get Linux Daemonsets and Calculate Required Resources
-	var daemonSetsData []*DaemonSetData
+	var daemonSetsDataList []*DaemonSetData
 	if e.CalculateNodePool {
-		log.Infof("[EventCronJob] Event : %s, Calculate daemonsets resources", e.Name)
-		daemonSets, err := kubernetesClient.AppsV1().DaemonSets("kube-system").List(
+		log.Infof("[EventCronJb] Event : %s, Calculate daemonsets resources", e.Name)
+		daemonSetsData, err := c.clusterUC.GetAllDaemonSetsInNamespace(
 			ctx,
-			v1Option.ListOptions{},
+			kubernetesClient,
+			"kube-system",
 		)
 		if err != nil {
 			c.handleExecEventError(db, e, err.Error())
 			return
 		}
+		daemonSets := daemonSetsData.DaemonSetListObject
 
 		for _, daemonSet := range daemonSets.Items {
 			spec := daemonSet.Spec.Template.Spec
@@ -242,8 +245,8 @@ func (c *cron) execGCPEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context)
 					nodeAffinity = spec.Affinity.NodeAffinity
 				}
 			}
-			daemonSetsData = append(
-				daemonSetsData, &DaemonSetData{
+			daemonSetsDataList = append(
+				daemonSetsDataList, &DaemonSetData{
 					NodeSelector:    labels.Set(spec.NodeSelector).AsSelector(),
 					NodeAffinity:    nodeAffinity,
 					RequestedMemory: totalRequestedMemory,
@@ -268,7 +271,7 @@ func (c *cron) execGCPEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context)
 		"[EventCronJob] Event : %s, Calculate maximum available resources in node pools",
 		e.Name,
 	)
-	nodePools := googleClusterData.NodePools
+	nodePools := googleClusterData.ClusterObject.NodePools
 	nodePoolsMaxResources := map[string]*NodePoolResourceData{}
 	nodePoolsRequestedResources := map[string]*NodePoolRequestedResourceData{}
 	nodePoolsMap := map[string]*container.NodePool{}
@@ -298,16 +301,11 @@ func (c *cron) execGCPEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context)
 					nodePoolMaxPods := nP.MaxPodsConstraint.MaxPodsPerNode
 					nodePoolMaxNode := nP.Autoscaling.MaxNodeCount
 
-					// Fetch nodepool labels from existing node
-					nodes, err := kubernetesClient.CoreV1().Nodes().List(
-						ctxEg, v1Option.ListOptions{
-							LabelSelector: fmt.Sprintf(
-								"%s=%s",
-								constant.GCPNodePoolLabel,
-								nP.Name,
-							),
-							Limit: 1,
-						},
+					// Fetch one node from existing node pool
+					nodeData, err := c.gcpClusterUC.GetOneK8sNodeFromNodePool(
+						ctxEg,
+						kubernetesClient,
+						nP.Name,
 					)
 					if err != nil {
 						if ctxEg.Err() != nil {
@@ -321,19 +319,7 @@ func (c *cron) execGCPEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context)
 						)
 						return err
 					}
-					if len(nodes.Items) == 0 {
-						if ctxEg.Err() != nil {
-							return nil
-						}
-						err = errors.New(errorConstant.NoExistingNode)
-						log.Errorf(
-							"[EventCronJob] Event : %s, Node pool %s, Error : %s",
-							e.Name,
-							nP.Name,
-							err.Error(),
-						)
-						return err
-					}
+					nodes := nodeData.NodeListObject
 					node := nodes.Items[0]
 					availablePods := nodePoolMaxPods
 					rD.NodeLabels = node.Labels
@@ -341,7 +327,7 @@ func (c *cron) execGCPEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context)
 					totalDaemonSetsRequestedCPU := float64(0)
 					totalDaemonSetsRequestedMemory := float64(0)
 					var matchesDaemonSet []string
-					for _, daemonSet := range daemonSetsData {
+					for _, daemonSet := range daemonSetsDataList {
 						nodePoolMatch, err := util.CheckPodNodePoolMatch(
 							rD.NodeLabels,
 							daemonSet.NodeAffinity,
@@ -428,15 +414,13 @@ func (c *cron) execGCPEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context)
 		var deploymentNames []string
 
 		log.Infof("[EventCronJob] Event : %s, Fetching deployments", e.Name)
-		deployments, err := kubernetesClient.AppsV1().Deployments("").List(
-			ctx,
-			v1Option.ListOptions{},
-		)
+		deploymentsData, err := c.clusterUC.GetAllDeployments(ctxEg, kubernetesClient, "")
 		if err != nil {
 			c.handleExecEventError(db, e, err.Error())
 			return
 		}
 
+		deployments := deploymentsData.DeploymentListObject
 		for _, deployment := range deployments.Items {
 			key := fmt.Sprintf(constant.NameNSKeyFormat, deployment.Name, deployment.Namespace)
 			deploymentNames = append(deploymentNames, key)
@@ -909,17 +893,14 @@ func (c *cron) execGCPEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context)
 
 						autoscalingData.MaxNodeCount = newMaxNode
 
-						op, err := googleContainerClient.SetNodePoolAutoscaling(
-							ctxEg, &container.SetNodePoolAutoscalingRequest{
-								Name: fmt.Sprintf(
-									"projects/%s/locations/%s/clusters/%s/nodePools/%s",
-									project,
-									location,
-									name,
-									nodePoolObj.Name,
-								),
-								Autoscaling: autoscalingData,
-							},
+						opData, err := c.gcpClusterUC.SetNodePoolAutoscaling(
+							ctx,
+							googleContainerClient,
+							project,
+							location,
+							name,
+							nodePoolObj.Name,
+							autoscalingData,
 						)
 						if err != nil {
 							if ctxEg.Err() != nil {
@@ -927,22 +908,22 @@ func (c *cron) execGCPEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context)
 							}
 							return err
 						}
+						op := opData.OperationData
 						for {
-							opIns, err := googleContainerClient.GetOperation(
+							opData, err = c.gcpClusterUC.GetOperation(
 								ctx,
-								&container.GetOperationRequest{Name: fmt.Sprintf(
-									"projects/%s/locations/%s/operations/%s",
-									project,
-									location,
-									op.Name,
-								)},
+								googleContainerClient,
+								project,
+								location,
+								op.Name,
 							)
+							op = opData.OperationData
 							if err != nil {
 								return err
 							}
-							if opIns.Status == container.Operation_DONE {
-								if opIns.Error != nil {
-									return errors.New(opIns.Error.String())
+							if op.Status == container.Operation_DONE {
+								if op.Error != nil {
+									return errors.New(op.Error.String())
 								}
 								return nil
 							}

@@ -19,6 +19,8 @@ type Repositories struct {
 	NodePoolStatus     NodePoolStatus
 	UpdatedNodePool    UpdatedNodePool
 	HPAStatus          HPAStatus
+	K8sNode            K8sNode
+	K8sDaemonSets      K8sDaemonSets
 }
 
 func Migrate(db *gorm.DB) error {
@@ -65,5 +67,7 @@ func BuildRepositories(resources *config.KubeEPResources) *Repositories {
 		NodePoolStatus:     newNodePoolStatus(),
 		HPAStatus:          newHpaStatus(),
 		UpdatedNodePool:    newUpdatedNodePool(),
+		K8sNode:            newK8sNode(),
+		K8sDaemonSets:      newK8sDaemonSets(),
 	}
 }

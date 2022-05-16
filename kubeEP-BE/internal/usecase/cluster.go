@@ -46,7 +46,7 @@ type Cluster interface {
 		client kubernetes.Interface,
 		clusterID uuid.UUID,
 		latestHPAVersion constant.HPAVersion,
-	) (output []interface{}, err error)
+	) (output []UCEntity.K8sHPAObjectData, err error)
 	UpdateHPAK8sObjectBatch(
 		ctx context.Context,
 		client kubernetes.Interface,
@@ -65,17 +65,26 @@ type Cluster interface {
 		deploymentsMap map[string]v1Apps.Deployment,
 		deleteKey ...bool,
 	) (res *v1Apps.Deployment, err error)
+	GetAllDeployments(
+		ctx context.Context,
+		client kubernetes.Interface,
+		namespace string,
+	) (*UCEntity.K8sDeploymentListData, error)
+	GetAllDaemonSetsInNamespace(
+		ctx context.Context,
+		client kubernetes.Interface,
+		namespace string,
+	) (*UCEntity.K8sDaemonSetListData, error)
 }
 
 type cluster struct {
-	validatorInst   *validator.Validate
-	clusterRepo     repository.Cluster
-	hpaRepo         repository.K8sHPA
-	namespaceRepo   repository.K8sNamespace
-	deploymentRepo  repository.K8sDeployment
-	discoveryRepo   repository.K8SDiscovery
-	gcpDatacenterUC GCPDatacenter
-	gcpClusterUC    GCPCluster
+	validatorInst  *validator.Validate
+	clusterRepo    repository.Cluster
+	hpaRepo        repository.K8sHPA
+	namespaceRepo  repository.K8sNamespace
+	deploymentRepo repository.K8sDeployment
+	discoveryRepo  repository.K8SDiscovery
+	daemonSetRepo  repository.K8sDaemonSets
 }
 
 func newCluster(
@@ -85,6 +94,7 @@ func newCluster(
 	namespaceRepo repository.K8sNamespace,
 	discoveryRepo repository.K8SDiscovery,
 	deploymentRepo repository.K8sDeployment,
+	daemonSetRepo repository.K8sDaemonSets,
 ) Cluster {
 	return &cluster{
 		validatorInst:  validatorInst,
@@ -93,6 +103,7 @@ func newCluster(
 		namespaceRepo:  namespaceRepo,
 		discoveryRepo:  discoveryRepo,
 		deploymentRepo: deploymentRepo,
+		daemonSetRepo:  daemonSetRepo,
 	}
 }
 
@@ -300,7 +311,7 @@ func (c *cluster) GetAllK8sHPAObjectInCluster(
 	client kubernetes.Interface,
 	clusterID uuid.UUID,
 	latestHPAVersion constant.HPAVersion,
-) (output []interface{}, err error) {
+) (output []UCEntity.K8sHPAObjectData, err error) {
 	namespaces, err := c.namespaceRepo.GetAllNamespace(ctx, client)
 	if err != nil {
 		return nil, err
@@ -322,7 +333,13 @@ func (c *cluster) GetAllK8sHPAObjectInCluster(
 					}
 					lock.Lock()
 					for _, hO := range response {
-						output = append(output, hO)
+						output = append(
+							output,
+							UCEntity.K8sHPAObjectData{
+								Version:   constant.AutoscalingV1,
+								HPAObject: hO,
+							},
+						)
 					}
 					lock.Unlock()
 				case constant.AutoscalingV2Beta1:
@@ -335,7 +352,13 @@ func (c *cluster) GetAllK8sHPAObjectInCluster(
 					}
 					lock.Lock()
 					for _, hO := range response {
-						output = append(output, hO)
+						output = append(
+							output,
+							UCEntity.K8sHPAObjectData{
+								Version:   constant.AutoscalingV2Beta1,
+								HPAObject: hO,
+							},
+						)
 					}
 					lock.Unlock()
 				case constant.AutoscalingV2Beta2:
@@ -348,7 +371,13 @@ func (c *cluster) GetAllK8sHPAObjectInCluster(
 					}
 					lock.Lock()
 					for _, hO := range response {
-						output = append(output, hO)
+						output = append(
+							output,
+							UCEntity.K8sHPAObjectData{
+								Version:   constant.AutoscalingV2Beta2,
+								HPAObject: hO,
+							},
+						)
 					}
 					lock.Unlock()
 				default:
@@ -588,4 +617,28 @@ func (c *cluster) ResolveScaleTargetRef(
 		return nil, errors.New(errorConstant.TargetRefResolveError)
 	}
 	return
+}
+
+func (c *cluster) GetAllDeployments(
+	ctx context.Context,
+	client kubernetes.Interface,
+	namespace string,
+) (*UCEntity.K8sDeploymentListData, error) {
+	data, err := c.deploymentRepo.GetAllDeployment(ctx, client, namespace)
+	if err != nil {
+		return nil, err
+	}
+	return &UCEntity.K8sDeploymentListData{DeploymentListObject: data}, nil
+}
+
+func (c *cluster) GetAllDaemonSetsInNamespace(
+	ctx context.Context,
+	client kubernetes.Interface,
+	namespace string,
+) (*UCEntity.K8sDaemonSetListData, error) {
+	data, err := c.daemonSetRepo.GetDaemonSetsList(ctx, client, namespace)
+	if err != nil {
+		return nil, err
+	}
+	return &UCEntity.K8sDaemonSetListData{DaemonSetListObject: data}, nil
 }

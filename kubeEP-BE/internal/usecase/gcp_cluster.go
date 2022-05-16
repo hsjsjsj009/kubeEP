@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant"
 	errorConstant "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant/errors"
 	UCEntity "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/usecase"
 	gcpCustomAuth "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/pkg/k8s/auth/gcp_custom"
@@ -17,7 +18,9 @@ import (
 	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/repository/model"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
+	containerEntity "google.golang.org/genproto/googleapis/container/v1"
 	"gorm.io/gorm"
+	v1Option "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd/api"
 )
@@ -50,6 +53,26 @@ type GCPCluster interface {
 		ctx context.Context,
 		googleCredential *google.Credentials,
 	) (*compute.InstanceTemplatesClient, error)
+	GetGCPClusterObject(
+		ctx context.Context,
+		clusterClient *container.ClusterManagerClient,
+		projectID, location, clusterName string,
+	) (*UCEntity.GCPClusterObjectData, error)
+	GetNodesFromGCPNodePool(
+		ctx context.Context,
+		k8sClient kubernetes.Interface,
+		nodePoolName string,
+	) (*UCEntity.K8sNodeListData, error)
+	SetNodePoolAutoscaling(
+		ctx context.Context, clusterClient *container.ClusterManagerClient,
+		project, location, clusterName, nodePoolName string,
+		autoscalingData *containerEntity.NodePoolAutoscaling,
+	) (*UCEntity.GCPClusterOperationData, error)
+	GetOperation(
+		ctx context.Context,
+		clusterClient *container.ClusterManagerClient,
+		project, location, operationName string,
+	) (*UCEntity.GCPClusterOperationData, error)
 }
 
 type gcpCluster struct {
@@ -57,6 +80,7 @@ type gcpCluster struct {
 	clusterRepo      repository.Cluster
 	gcpClusterRepo   repository.GCPCluster
 	k8sDiscoveryRepo repository.K8SDiscovery
+	k8sNodeRepo      repository.K8sNode
 }
 
 func newGCPCluster(
@@ -64,12 +88,14 @@ func newGCPCluster(
 	clusterRepo repository.Cluster,
 	gcpClusterRepo repository.GCPCluster,
 	k8sDiscoveryRepo repository.K8SDiscovery,
+	k8sNodeRepo repository.K8sNode,
 ) GCPCluster {
 	return &gcpCluster{
 		validatorInst:    validatorInst,
 		clusterRepo:      clusterRepo,
 		gcpClusterRepo:   gcpClusterRepo,
 		k8sDiscoveryRepo: k8sDiscoveryRepo,
+		k8sNodeRepo:      k8sNodeRepo,
 	}
 }
 
@@ -169,7 +195,25 @@ func (c *gcpCluster) RegisterClusters(
 	return nil
 }
 
-func (c gcpCluster) GetKubernetesClusterClient(
+func (c *gcpCluster) GetGCPClusterObject(
+	ctx context.Context,
+	clusterClient *container.ClusterManagerClient,
+	projectID, location, clusterName string,
+) (*UCEntity.GCPClusterObjectData, error) {
+	clusterData, err := c.gcpClusterRepo.GetCluster(
+		ctx,
+		clusterClient,
+		projectID,
+		location,
+		clusterName,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &UCEntity.GCPClusterObjectData{ClusterObject: clusterData}, nil
+}
+
+func (c *gcpCluster) GetKubernetesClusterClient(
 	credentialsName string,
 	clusterData *UCEntity.ClusterData,
 ) (*kubernetes.Clientset, error) {
@@ -190,4 +234,59 @@ func (c gcpCluster) GetKubernetesClusterClient(
 	}
 
 	return k8sClient.GetClient(credentials)
+}
+
+func (c *gcpCluster) GetNodesFromGCPNodePool(
+	ctx context.Context,
+	k8sClient kubernetes.Interface,
+	nodePoolName string,
+) (*UCEntity.K8sNodeListData, error) {
+	data, err := c.k8sNodeRepo.GetNodeList(
+		ctx, k8sClient, v1Option.ListOptions{
+			LabelSelector: fmt.Sprintf(
+				"%s=%s",
+				constant.GCPNodePoolLabel,
+				nodePoolName,
+			),
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	if len(data.Items) == 0 {
+		return nil, errors.New(errorConstant.NoExistingNode)
+	}
+	return &UCEntity.K8sNodeListData{NodeListObject: data}, nil
+}
+
+func (c *gcpCluster) SetNodePoolAutoscaling(
+	ctx context.Context, clusterClient *container.ClusterManagerClient,
+	project, location, clusterName, nodePoolName string,
+	autoscalingData *containerEntity.NodePoolAutoscaling,
+) (*UCEntity.GCPClusterOperationData, error) {
+	op, err := c.gcpClusterRepo.SetNodePoolAutoscaling(
+		ctx,
+		clusterClient,
+		project,
+		location,
+		clusterName,
+		nodePoolName,
+		autoscalingData,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &UCEntity.GCPClusterOperationData{OperationData: op}, nil
+}
+
+func (c *gcpCluster) GetOperation(
+	ctx context.Context,
+	clusterClient *container.ClusterManagerClient,
+	project, location, operationName string,
+) (*UCEntity.GCPClusterOperationData, error) {
+	op, err := c.gcpClusterRepo.GetOperation(ctx, clusterClient, project, location, operationName)
+	if err != nil {
+		return nil, err
+	}
+	return &UCEntity.GCPClusterOperationData{OperationData: op}, nil
 }

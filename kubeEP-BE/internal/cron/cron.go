@@ -231,9 +231,9 @@ func (c *cron) watchEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context) {
 	}
 
 	mapHPAScaleTargetRef := map[string]interface{}{}
-	for _, hpaK8sObject := range allHPAK8sObject {
+	for _, data := range allHPAK8sObject {
 		for _, scheduledHPAConfig := range scheduledHPAConfigs {
-			switch h := hpaK8sObject.(type) {
+			switch h := data.HPAObject.(type) {
 			case v1.HorizontalPodAutoscaler:
 				if scheduledHPAConfig.Name == h.Name && scheduledHPAConfig.Namespace == h.Namespace {
 					mapHPAScaleTargetRef[fmt.Sprintf(

@@ -219,7 +219,7 @@ func (c *cron) execGCPEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context)
 	// Get Linux Daemonsets and Calculate Required Resources
 	var daemonSetsDataList []*DaemonSetData
 	if e.CalculateNodePool {
-		log.Infof("[EventCronJb] Event : %s, Calculate daemonsets resources", e.Name)
+		log.Infof("[EventCronJob] Event : %s, Calculate daemonsets resources", e.Name)
 		daemonSetsData, err := c.clusterUC.GetAllDaemonSetsInNamespace(
 			ctx,
 			kubernetesClient,
@@ -301,8 +301,8 @@ func (c *cron) execGCPEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context)
 					nodePoolMaxPods := nP.MaxPodsConstraint.MaxPodsPerNode
 					nodePoolMaxNode := nP.Autoscaling.MaxNodeCount
 
-					// Fetch one node from existing node pool
-					nodeData, err := c.gcpClusterUC.GetOneK8sNodeFromNodePool(
+					// Fetch nodepool labels from existing node
+					nodeData, err := c.gcpClusterUC.GetNodesFromGCPNodePool(
 						ctxEg,
 						kubernetesClient,
 						nP.Name,

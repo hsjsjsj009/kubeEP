@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant"
 	errorConstant "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant/errors"
 	UCEntity "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/entity/usecase"
 	gcpCustomAuth "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/pkg/k8s/auth/gcp_custom"
@@ -19,6 +20,7 @@ import (
 	"google.golang.org/api/option"
 	containerEntity "google.golang.org/genproto/googleapis/container/v1"
 	"gorm.io/gorm"
+	v1Option "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd/api"
 )
@@ -56,7 +58,7 @@ type GCPCluster interface {
 		clusterClient *container.ClusterManagerClient,
 		projectID, location, clusterName string,
 	) (*UCEntity.GCPClusterObjectData, error)
-	GetOneK8sNodeFromNodePool(
+	GetNodesFromGCPNodePool(
 		ctx context.Context,
 		k8sClient kubernetes.Interface,
 		nodePoolName string,
@@ -234,14 +236,25 @@ func (c *gcpCluster) GetKubernetesClusterClient(
 	return k8sClient.GetClient(credentials)
 }
 
-func (c *gcpCluster) GetOneK8sNodeFromNodePool(
+func (c *gcpCluster) GetNodesFromGCPNodePool(
 	ctx context.Context,
 	k8sClient kubernetes.Interface,
 	nodePoolName string,
 ) (*UCEntity.K8sNodeListData, error) {
-	data, err := c.k8sNodeRepo.GetNodesFromGCPNodePool(ctx, k8sClient, nodePoolName)
+	data, err := c.k8sNodeRepo.GetNodeList(
+		ctx, k8sClient, v1Option.ListOptions{
+			LabelSelector: fmt.Sprintf(
+				"%s=%s",
+				constant.GCPNodePoolLabel,
+				nodePoolName,
+			),
+		},
+	)
 	if err != nil {
 		return nil, err
+	}
+	if len(data.Items) == 0 {
+		return nil, errors.New(errorConstant.NoExistingNode)
 	}
 	return &UCEntity.K8sNodeListData{NodeListObject: data}, nil
 }

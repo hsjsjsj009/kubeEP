@@ -2,20 +2,16 @@ package repository
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant"
-	errorConstant "github.com/hsjsjsj009/kubeEP/kubeEP-BE/internal/constant/errors"
 	"k8s.io/api/core/v1"
 	v1Option "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
 type K8sNode interface {
-	GetNodesFromGCPNodePool(
+	GetNodeList(
 		ctx context.Context,
 		k8sClient kubernetes.Interface,
-		nodePoolName string,
+		option ...v1Option.ListOptions,
 	) (*v1.NodeList, error)
 }
 
@@ -26,25 +22,20 @@ func newK8sNode() K8sNode {
 	return &k8sNode{}
 }
 
-func (n *k8sNode) GetNodesFromGCPNodePool(
+func (n *k8sNode) GetNodeList(
 	ctx context.Context,
 	k8sClient kubernetes.Interface,
-	nodePoolName string,
+	option ...v1Option.ListOptions,
 ) (*v1.NodeList, error) {
+	reqOption := v1Option.ListOptions{}
+	if len(option) > 0 {
+		reqOption = option[0]
+	}
 	data, err := k8sClient.CoreV1().Nodes().List(
-		ctx, v1Option.ListOptions{
-			LabelSelector: fmt.Sprintf(
-				"%s=%s",
-				constant.GCPNodePoolLabel,
-				nodePoolName,
-			),
-		},
+		ctx, reqOption,
 	)
 	if err != nil {
 		return nil, err
-	}
-	if len(data.Items) == 0 {
-		return nil, errors.New(errorConstant.NoExistingNode)
 	}
 	return data, nil
 }

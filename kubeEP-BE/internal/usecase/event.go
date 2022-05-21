@@ -223,7 +223,7 @@ func (e *event) GetAllPendingExecutableEvent(tx *gorm.DB, now time.Time) (
 	events, err := e.eventRepository.FindEventByStatusWithStarTimeBeforeMinuteAndClusterData(
 		tx,
 		model.EventPending,
-		20,
+		60,
 		now,
 	)
 	if err != nil {
@@ -257,7 +257,7 @@ func (e *event) GetAllPrescaledEvent10MinBeforeStart(tx *gorm.DB, now time.Time)
 	events, err := e.eventRepository.FindEventByStatusWithStarTimeBeforeMinute(
 		tx,
 		model.EventPrescaled,
-		10,
+		55,
 		now,
 	)
 	if err != nil {

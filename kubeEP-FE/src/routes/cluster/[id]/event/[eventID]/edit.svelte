@@ -22,7 +22,7 @@
     import DatetimeInput from "$lib/components/input/datetime.svelte"
     import {Writable} from "svelte/store";
     import {GetClusterHPAs} from "$lib/api/clusters";
-    import duration from "dayjs/plugin/duration"
+    import duration from "dayjs/plugin/duration.js"
     import {UpdateEvent} from "$lib/api/event";
 
     dayjs.extend(duration)
@@ -131,10 +131,6 @@
     <div class="mb-2">
         <label for="event-start">Start Time : </label>
         <DatetimeInput minDate={today} id="event-start" bind:date={startDate}/>
-    </div>
-    <div class="mb-2">
-        <label for="event-end">End Time : </label>
-        <DatetimeInput id="event-end" minDate={endDate} bind:date={endDate}/>
     </div>
     <div class="mb-2">
         <label for="event-end">End Time : </label>

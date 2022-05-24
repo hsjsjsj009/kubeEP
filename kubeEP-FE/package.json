@@ -37,7 +37,7 @@
 	},
 	"type": "module",
 	"dependencies": {
-		"dayjs": "^1.11.1",
+		"dayjs": "^1.11.2",
 		"svelte-jsoneditor": "^0.3.40"
 	}
 }

@@ -13,7 +13,7 @@
     import {GetClusterHPAs} from "$lib/api/clusters";
     import {onMount} from "svelte";
     import dayjs from "dayjs";
-    import duration from "dayjs/plugin/duration"
+    import duration from "dayjs/plugin/duration.js"
     import DatetimeInput from "$lib/components/input/datetime.svelte"
     import {CreateEvent} from "$lib/api/event";
     import type {EventDataRequest, EventModifiedHPAConfigData} from "$lib/api/type";

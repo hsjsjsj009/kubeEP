@@ -116,3 +116,4 @@ requests/*.http
 cron
 
 test.log
+skenario3.log

@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: factorial
+  labels:
+    app: factorial
+spec:
+  selector:
+    matchLabels:
+      app: factorial
+  template:
+    metadata:
+      labels:
+        app: factorial
+    spec:
+      containers:
+        - name: factorial
+          image: asia.gcr.io/able-campaign-303905/factorial:latest
+          ports:
+            - name: main
+              containerPort: 8080
+          resources:
+            requests:
+              memory: "16Mi"
+              cpu: "100m"
+            limits:
+              memory: "32Mi"
+              cpu: "200m"
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            httpGet:
+              path: /factorial?number=5
+              port: main
+            initialDelaySeconds: 10
+            periodSeconds: 3
+            timeoutSeconds: 2
+          readinessProbe:
+            httpGet:
+              path: /factorial?number=100
+              port: main
+            initialDelaySeconds: 10
+            periodSeconds: 3
+            timeoutSeconds: 2
+

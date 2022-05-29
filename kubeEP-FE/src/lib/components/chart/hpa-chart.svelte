@@ -23,22 +23,10 @@
 		try {
 			const response = await GetEventHPAStatistics(id);
 			maximumPodsStatistic = {
-				replicas: response.reduce(
-					(prev, current) => (prev < current.replicas ? current.replicas : prev),
-					0
-				),
-				readyReplicas: response.reduce(
-					(prev, current) => (prev < current.replicas ? current.ready_replicas : prev),
-					0
-				),
-				availableReplicas: response.reduce(
-					(prev, current) => (prev < current.replicas ? current.available_replicas : prev),
-					0
-				),
-				unavailableReplicas: response.reduce(
-					(prev, current) => (prev < current.replicas ? current.unavailable_replicas : prev),
-					0
-				)
+				replicas: Math.max(...response.map(o => o.replicas)),
+				readyReplicas: Math.max(...response.map(o => o.ready_replicas)),
+				availableReplicas: Math.max(...response.map(o => o.available_replicas)),
+				unavailableReplicas: Math.max(...response.map(o => o.unavailable_replicas))
 			};
 			data = [
 				...response.map((o) => [

@@ -27,6 +27,7 @@ type Event struct {
 	CalculateNodePool bool
 	Cluster           Cluster `gorm:"ForeignKey:ClusterID;constraint:OnDelete:CASCADE"`
 	ExecuteConfigAt   time.Time
+	WatchingAt        time.Time
 }
 
 func (e *Event) TableName() string {

@@ -12,6 +12,7 @@ type EventDataRequest struct {
 	ClusterID          *uuid.UUID                   `json:"cluster_id" validate:"required"`
 	CalculateNodePool  *bool                        `json:"calculate_node_pool"`
 	ExecuteConfigAt    *time.Time                   `json:"execute_config_at" validate:"required"`
+	WatchingAt         *time.Time                   `json:"watching_at" validate:"required,gtefield=ExecuteConfigAt,ltefield=StartTime"`
 	ModifiedHPAConfigs []EventModifiedHPAConfigData `json:"modified_hpa_configs" validate:"required,min=1,dive"`
 }
 
@@ -26,6 +27,7 @@ type UpdateEventDataRequest struct {
 	ModifiedHPAConfigs []EventModifiedHPAConfigData `json:"modified_hpa_configs" validate:"required,min=1,dive"`
 	CalculateNodePool  *bool                        `json:"calculate_node_pool"`
 	ExecuteConfigAt    *time.Time                   `json:"execute_config_at" validate:"required,gtefield=ExecuteConfigAt"`
+	WatchingAt         *time.Time                   `json:"watching_at" validate:"required,gtefield=ExecuteConfigAt,ltefield=StartTime"`
 	EventID            *uuid.UUID                   `json:"event_id" validator:"required"`
 }
 

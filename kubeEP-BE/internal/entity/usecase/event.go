@@ -17,6 +17,7 @@ type Event struct {
 	Message           string
 	CalculateNodePool bool
 	ExecuteConfigAt   time.Time
+	WatchingAt        time.Time
 	Cluster           ClusterData
 }
 

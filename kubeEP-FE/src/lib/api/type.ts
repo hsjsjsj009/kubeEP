@@ -46,6 +46,7 @@ export interface EventDetailedResponse extends EventSimpleResponse {
 	updated_node_pools: UpdatedNodePool[];
 	execute_config_at: string;
 	calculate_node_pool: boolean;
+	watching_at: string
 }
 
 export interface NodePoolStatus {
@@ -117,6 +118,7 @@ export interface EventDataRequest {
 	modified_hpa_configs: EventModifiedHPAConfigData[]
 	calculate_node_pool: boolean
 	execute_config_at: string
+	watching_at: string
 }
 
 export interface EventCreationResponse {
@@ -131,5 +133,6 @@ export interface UpdateEventDataRequest {
 	modified_hpa_configs: EventModifiedHPAConfigData[],
 	calculate_node_pool: boolean
 	execute_config_at: string
+	watching_at: string
 }
 

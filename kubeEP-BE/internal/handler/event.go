@@ -100,6 +100,7 @@ func (e *event) RegisterEvents(c *fiber.Ctx) error {
 	eventData := &UCEntity.Event{
 		Name:              *reqData.Name,
 		ExecuteConfigAt:   *reqData.ExecuteConfigAt,
+		WatchingAt:        *reqData.WatchingAt,
 		StartTime:         *reqData.StartTime,
 		EndTime:           *reqData.EndTime,
 		CalculateNodePool: *reqData.CalculateNodePool,
@@ -210,6 +211,7 @@ func (e *event) UpdateEvent(c *fiber.Ctx) error {
 	eventData.StartTime = *req.StartTime
 	eventData.EndTime = *req.EndTime
 	eventData.ExecuteConfigAt = *req.ExecuteConfigAt
+	eventData.WatchingAt = *req.WatchingAt
 
 	if err := e.eventUC.UpdateEvent(tx, eventData); err != nil {
 		return e.errorResponse(c, err.Error())
@@ -310,6 +312,7 @@ func (e *event) GetDetailedEvent(c *fiber.Ctx) error {
 		UpdatedNodePools:   updatedNodePoolRes,
 		CalculateNodePool:  eventData.CalculateNodePool,
 		ExecuteConfigAt:    eventData.ExecuteConfigAt,
+		WatchingAt:         eventData.WatchingAt,
 	}
 
 	return e.successResponse(c, res)

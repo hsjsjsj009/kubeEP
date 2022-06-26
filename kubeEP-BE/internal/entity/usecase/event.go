@@ -16,6 +16,7 @@ type Event struct {
 	Status            model.EventStatus
 	Message           string
 	CalculateNodePool bool
+	ExecuteConfigAt   time.Time
 	Cluster           ClusterData
 }
 

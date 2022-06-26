@@ -34,6 +34,14 @@ type Event interface {
 	)
 	FindWatchedEvent(tx *gorm.DB, now time.Time) ([]*model.Event, error)
 	FinishWatchedEvent(tx *gorm.DB, now time.Time) error
+	FindActiveEventByExecuteConfigAt(
+		tx *gorm.DB,
+		status model.EventStatus,
+		now time.Time,
+	) (
+		[]*model.Event,
+		error,
+	)
 }
 
 type event struct {
@@ -87,6 +95,67 @@ func (e *event) FinishWatchedEvent(tx *gorm.DB, now time.Time) error {
 	).Update("status", model.EventSuccess).Error
 }
 
+func (e *event) FindActiveEventByExecuteConfigAt(
+	tx *gorm.DB,
+	status model.EventStatus,
+	now time.Time,
+) (
+	[]*model.Event,
+	error,
+) {
+	var data []*model.Event
+	rows, err := tx.Raw(
+		`select 
+    e.id, 
+    e.created_at, 
+    e.updated_at, 
+    e.deleted_at, 
+    e.name, 
+    e.start_time, 
+    e.end_time, 
+    e.cluster_id, 
+    e.status, 
+    e.message,
+    e.execute_config_at,
+    c.name, 
+    d.datacenter,
+    e.calculate_node_pool from events e 
+    join clusters c on c.id = e.cluster_id and c.deleted_at is null
+    join datacenters d on d.id = c.datacenter_id and d.deleted_at is null
+             where e.execute_config_at <= ? and e.status = ? and e.deleted_at is null`,
+		now.UTC(),
+		status,
+	).Rows()
+	defer rows.Close()
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		eventData := &model.Event{}
+		err = rows.Scan(
+			&eventData.ID,
+			&eventData.CreatedAt,
+			&eventData.UpdatedAt,
+			&eventData.DeletedAt,
+			&eventData.Name,
+			&eventData.StartTime,
+			&eventData.EndTime,
+			&eventData.ClusterID,
+			&eventData.Status,
+			&eventData.Message,
+			&eventData.ExecuteConfigAt,
+			&eventData.Cluster.Name,
+			&eventData.Cluster.Datacenter.Datacenter,
+			&eventData.CalculateNodePool,
+		)
+		if err != nil {
+			return nil, err
+		}
+		data = append(data, eventData)
+	}
+	return data, nil
+}
+
 func (e *event) FindEventByStatusWithStarTimeBeforeMinuteAndClusterData(
 	tx *gorm.DB,
 	status model.EventStatus,
@@ -109,6 +178,7 @@ func (e *event) FindEventByStatusWithStarTimeBeforeMinuteAndClusterData(
     e.cluster_id, 
     e.status, 
     e.message,
+    e.execute_config_at,
     c.name, 
     d.datacenter,
     e.calculate_node_pool from events e 
@@ -136,6 +206,7 @@ func (e *event) FindEventByStatusWithStarTimeBeforeMinuteAndClusterData(
 			&eventData.ClusterID,
 			&eventData.Status,
 			&eventData.Message,
+			&eventData.ExecuteConfigAt,
 			&eventData.Cluster.Name,
 			&eventData.Cluster.Datacenter.Datacenter,
 			&eventData.CalculateNodePool,

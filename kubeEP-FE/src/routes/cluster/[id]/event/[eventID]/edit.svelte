@@ -39,6 +39,7 @@
     let eventName = eventData.name
     let startDate = dayjs(eventData.start_time)
     let endDate = dayjs(eventData.end_time)
+    let executeConfigAt = dayjs(eventData.execute_config_at)
     let calculateNodePool = eventData.calculate_node_pool
 
     let editEvent = getContext<Writable<boolean>>(EditEvent)
@@ -93,7 +94,8 @@
             modified_hpa_configs: selectedHPA,
             name: eventName,
             start_time: startDate.toJSON(),
-            calculate_node_pool: calculateNodePool
+            calculate_node_pool: calculateNodePool,
+            execute_config_at: executeConfigAt.toJSON()
         }
         try {
             await UpdateEvent(req)
@@ -135,6 +137,10 @@
     <div class="mb-2">
         <label for="event-end">End Time : </label>
         <DatetimeInput id="event-end" minDate={endDate} bind:date={endDate}/>
+    </div>
+    <div class="mb-2">
+        <label for="exec-at">Exec At : </label>
+        <DatetimeInput id="exec-at" minDate={today} maxDate={startDate} bind:date={executeConfigAt}/>
     </div>
     <div class="mb-2">
         <label for="calculate-node-pool">Calculate Node Pool : </label>

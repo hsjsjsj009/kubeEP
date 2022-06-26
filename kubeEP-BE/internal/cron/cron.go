@@ -375,9 +375,11 @@ func (c *cron) Start() {
 					for _, pendingEvent := range pendingEvents {
 						switch pendingEvent.Cluster.Datacenter.Datacenter {
 						case model.GCP:
-							go c.execGCPEvent(pendingEvent, db, ctx)
+							go func(e *UCEntity.Event) {
+								c.execGCPEvent(e, db, ctx)
+								c.watchEvent(e, db, ctx)
+							}(pendingEvent)
 						}
-						go c.watchEvent(pendingEvent, db, ctx)
 					}
 				}
 			}()

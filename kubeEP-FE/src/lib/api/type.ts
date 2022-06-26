@@ -44,6 +44,7 @@ export interface EventDetailedResponse extends EventSimpleResponse {
 	cluster: Cluster;
 	modified_hpa_configs: ModifiedHPAConfig[];
 	updated_node_pools: UpdatedNodePool[];
+	execute_config_at: string;
 	calculate_node_pool: boolean;
 }
 
@@ -115,6 +116,7 @@ export interface EventDataRequest {
 	cluster_id: string
 	modified_hpa_configs: EventModifiedHPAConfigData[]
 	calculate_node_pool: boolean
+	execute_config_at: string
 }
 
 export interface EventCreationResponse {
@@ -127,6 +129,7 @@ export interface UpdateEventDataRequest {
 	end_time: string
 	event_id: string
 	modified_hpa_configs: EventModifiedHPAConfigData[],
-	calculate_node_pool
+	calculate_node_pool: boolean
+	execute_config_at: string
 }
 

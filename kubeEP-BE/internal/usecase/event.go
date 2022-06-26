@@ -226,7 +226,7 @@ func (e *event) GetAllPendingExecutableEvent(tx *gorm.DB, now time.Time) (
 	[]*UCEntity.Event,
 	error,
 ) {
-	events, err := e.eventRepository.FindActiveEventByExecuteConfigAt(tx, model.EventPending, now)
+	events, err := e.eventRepository.FindEventByExecuteConfigAt(tx, model.EventPending, now)
 	if err != nil {
 		return nil, err
 	}

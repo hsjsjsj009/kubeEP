@@ -34,7 +34,7 @@ type Event interface {
 	)
 	FindWatchedEvent(tx *gorm.DB, now time.Time) ([]*model.Event, error)
 	FinishWatchedEvent(tx *gorm.DB, now time.Time) error
-	FindActiveEventByExecuteConfigAt(
+	FindEventByExecuteConfigAt(
 		tx *gorm.DB,
 		status model.EventStatus,
 		now time.Time,
@@ -95,7 +95,7 @@ func (e *event) FinishWatchedEvent(tx *gorm.DB, now time.Time) error {
 	).Update("status", model.EventSuccess).Error
 }
 
-func (e *event) FindActiveEventByExecuteConfigAt(
+func (e *event) FindEventByExecuteConfigAt(
 	tx *gorm.DB,
 	status model.EventStatus,
 	now time.Time,

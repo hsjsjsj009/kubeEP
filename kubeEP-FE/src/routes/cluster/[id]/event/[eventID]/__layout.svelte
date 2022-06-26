@@ -41,6 +41,7 @@
 
     let startTime
     let endTime
+    let executeConfigAt
 
     let eventData: EventDetailedResponse;
 
@@ -48,6 +49,7 @@
         setContext<EventDetailedResponse>(EventData, eventData)
         startTime = new Date(eventData.start_time);
         endTime = new Date(eventData.end_time);
+        executeConfigAt = new Date(eventData.execute_config_at);
     }
 
     onMount(async () => {
@@ -115,6 +117,7 @@
         <h4>Name : {eventData.name}</h4>
         <h4>Start Time : {startTime.toLocaleString()}</h4>
         <h4>End Time : {endTime.toLocaleString()}</h4>
+        <h4>Execute Config At : {executeConfigAt.toLocaleString()}</h4>
         <h4>Status : {eventData.status}</h4>
         <h4>Calculate Node Pool : {eventData.calculate_node_pool ? "Yes" : "No"}</h4>
         <button on:click={deleteEvent} class="mb-2 rounded-3xl border-2 p-2 mx-2"><h4>Delete</h4></button>

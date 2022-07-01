@@ -39,6 +39,8 @@
     let eventName = eventData.name
     let startDate = dayjs(eventData.start_time)
     let endDate = dayjs(eventData.end_time)
+    let executeConfigAt = dayjs(eventData.execute_config_at)
+    let watchingAt = dayjs(eventData.watching_at)
     let calculateNodePool = eventData.calculate_node_pool
 
     let editEvent = getContext<Writable<boolean>>(EditEvent)
@@ -93,7 +95,9 @@
             modified_hpa_configs: selectedHPA,
             name: eventName,
             start_time: startDate.toJSON(),
-            calculate_node_pool: calculateNodePool
+            calculate_node_pool: calculateNodePool,
+            execute_config_at: executeConfigAt.toJSON(),
+            watching_at: watchingAt.toJSON()
         }
         try {
             await UpdateEvent(req)
@@ -107,6 +111,18 @@
         setTimeout(() => {
             location.replace(`/cluster/${clusterID}/event/${eventData.id}`)
         }, 2000)
+    }
+
+    $: {
+        if (startDate.isAfter(endDate) || startDate.isSame(endDate)) {
+            endDate = startDate.add(dayjs.duration({days:1}))
+        }
+        if (executeConfigAt.isAfter(startDate)) {
+            executeConfigAt = startDate.subtract(dayjs.duration({hours:1}))
+        }
+        if (watchingAt.isAfter(startDate)) {
+            watchingAt = startDate.subtract(dayjs.duration({hours:1}))
+        }
     }
 
     $: selectedHPA = hpaList.filter(
@@ -135,6 +151,14 @@
     <div class="mb-2">
         <label for="event-end">End Time : </label>
         <DatetimeInput id="event-end" minDate={endDate} bind:date={endDate}/>
+    </div>
+    <div class="mb-2">
+        <label for="exec-at">Exec At : </label>
+        <DatetimeInput id="exec-at" minDate={today} maxDate={startDate} bind:date={executeConfigAt}/>
+    </div>
+    <div class="mb-2">
+        <label for="watching-at">Watching At : </label>
+        <DatetimeInput id="watching-at" minDate={executeConfigAt} maxDate={startDate} bind:date={watchingAt}/>
     </div>
     <div class="mb-2">
         <label for="calculate-node-pool">Calculate Node Pool : </label>
